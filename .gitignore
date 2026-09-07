@@ -1,0 +1,11 @@
+.build/
+dist/
+*.zip
+*.xcarchive/
+*.xcuserdata/
+# xcodegen 생성물 (project.yml > info.properties가 진실, 직접 수정 금지)
+Sources/AGO/Info.plist
+DerivedData/
+.env
+.env.expiry
+api_keys.json

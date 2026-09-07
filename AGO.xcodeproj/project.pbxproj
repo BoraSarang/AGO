@@ -1,0 +1,516 @@
+// !$*UTF8*$!
+{
+	archiveVersion = 1;
+	classes = {
+	};
+	objectVersion = 77;
+	objects = {
+
+/* Begin PBXBuildFile section */
+		05969F6F54229064CE30CA72 /* GatePipeline.swift in Sources */ = {isa = PBXBuildFile; fileRef = E325F9601D8B23D5299F5524 /* GatePipeline.swift */; };
+		1697AF699FC2290F6C5DC56D /* InfoPlist.strings in Resources */ = {isa = PBXBuildFile; fileRef = EAA0145BA702B3D734B7ED67 /* InfoPlist.strings */; };
+		28D2FE82A8A1FD6E4A07555E /* HelpSheetView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 855D816848F777C8937202B3 /* HelpSheetView.swift */; };
+		344A6729D9D580766564E321 /* PipelineTimelineView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 147579FD4FEA17D2F4F7C016 /* PipelineTimelineView.swift */; };
+		394F6B037980CD4144DE3F54 /* VerdictCardView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 0104D313E5BD93FEDEB71D75 /* VerdictCardView.swift */; };
+		477DFAC484D11B90179E1312 /* TerminalLogView.swift in Sources */ = {isa = PBXBuildFile; fileRef = B396F1543117545124EF438B /* TerminalLogView.swift */; };
+		4B08366FFDDA56955CFD957F /* PipelineViewModel.swift in Sources */ = {isa = PBXBuildFile; fileRef = B9061DF12CC1C297094B750F /* PipelineViewModel.swift */; };
+		4B95C247B9A2A698CB47A73F /* AppInspector.swift in Sources */ = {isa = PBXBuildFile; fileRef = 66C9F41DB2EC7FFA76FBC53A /* AppInspector.swift */; };
+		6E44313B72372CBA46AC2ACB /* L10n.swift in Sources */ = {isa = PBXBuildFile; fileRef = E05E8AC116C10726AAE466B9 /* L10n.swift */; };
+		9A8EE7D2193BC5D7FC8CE61E /* AppError.swift in Sources */ = {isa = PBXBuildFile; fileRef = B845E7A1609053F3385C33DE /* AppError.swift */; };
+		CA8E645CBFE54862A837FA40 /* PipelineTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 5FB2AFB043761F123C4C75F5 /* PipelineTests.swift */; };
+		CCD28B993AFD7B87D82251E9 /* AppIcon.icns in Resources */ = {isa = PBXBuildFile; fileRef = 0A9D29B8BD116531729FAB6A /* AppIcon.icns */; };
+		D5E0CAA13C1D7E2EC73BB9CF /* AGOApp.swift in Sources */ = {isa = PBXBuildFile; fileRef = E60F9C87F12ED8BF3E41A663 /* AGOApp.swift */; };
+		F7AD9EE80518563F247E5D87 /* DebugLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41489FE115A4C05C354AE046 /* DebugLogger.swift */; };
+		FB93FAB754BE11E641E70882 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = F53634BBC75B58897680595F /* Localizable.strings */; };
+		FD6A811C89CC702011A3411C /* DropZoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D35065D8A8A69BFE5438BA /* DropZoneView.swift */; };
+/* End PBXBuildFile section */
+
+/* Begin PBXContainerItemProxy section */
+		D5004171C34AFAF318C621A1 /* PBXContainerItemProxy */ = {
+			isa = PBXContainerItemProxy;
+			containerPortal = DD1DA18A6E18F12B241E36FD /* Project object */;
+			proxyType = 1;
+			remoteGlobalIDString = 7A52092569025AC19FB113F8;
+			remoteInfo = AGO;
+		};
+/* End PBXContainerItemProxy section */
+
+/* Begin PBXFileReference section */
+		0104D313E5BD93FEDEB71D75 /* VerdictCardView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = VerdictCardView.swift; sourceTree = "<group>"; };
+		0A9D29B8BD116531729FAB6A /* AppIcon.icns */ = {isa = PBXFileReference; lastKnownFileType = image.icns; path = AppIcon.icns; sourceTree = "<group>"; };
+		147579FD4FEA17D2F4F7C016 /* PipelineTimelineView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipelineTimelineView.swift; sourceTree = "<group>"; };
+		17B2FFE835BC0F52F03DA85D /* Info.plist */ = {isa = PBXFileReference; lastKnownFileType = text.plist; path = Info.plist; sourceTree = "<group>"; };
+		3D30BFB4BD42DBF4EC2A2E4A /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/Localizable.strings; sourceTree = "<group>"; };
+		41489FE115A4C05C354AE046 /* DebugLogger.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DebugLogger.swift; sourceTree = "<group>"; };
+		56D35065D8A8A69BFE5438BA /* DropZoneView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = DropZoneView.swift; sourceTree = "<group>"; };
+		5FB2AFB043761F123C4C75F5 /* PipelineTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipelineTests.swift; sourceTree = "<group>"; };
+		66C9F41DB2EC7FFA76FBC53A /* AppInspector.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppInspector.swift; sourceTree = "<group>"; };
+		72A2383FDAB181C66088B6AD /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+		7F5043652F1FBC1F26F37D05 /* AGO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AGO.app; sourceTree = BUILT_PRODUCTS_DIR; };
+		855D816848F777C8937202B3 /* HelpSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpSheetView.swift; sourceTree = "<group>"; };
+		9134146FD2CDC440C03C84A0 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
+		B396F1543117545124EF438B /* TerminalLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLogView.swift; sourceTree = "<group>"; };
+		B845E7A1609053F3385C33DE /* AppError.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AppError.swift; sourceTree = "<group>"; };
+		B9061DF12CC1C297094B750F /* PipelineViewModel.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PipelineViewModel.swift; sourceTree = "<group>"; };
+		E05E8AC116C10726AAE466B9 /* L10n.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = L10n.swift; sourceTree = "<group>"; };
+		E325F9601D8B23D5299F5524 /* GatePipeline.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GatePipeline.swift; sourceTree = "<group>"; };
+		E60F9C87F12ED8BF3E41A663 /* AGOApp.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = AGOApp.swift; sourceTree = "<group>"; };
+		F631491FE8A518218CC2FF28 /* AGOTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = AGOTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		FD2F6FA6EDF726F5302F742C /* en */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = en; path = en.lproj/InfoPlist.strings; sourceTree = "<group>"; };
+/* End PBXFileReference section */
+
+/* Begin PBXGroup section */
+		4C1F43F748C0DE6084D17D56 /* Resources */ = {
+			isa = PBXGroup;
+			children = (
+				0A9D29B8BD116531729FAB6A /* AppIcon.icns */,
+				EAA0145BA702B3D734B7ED67 /* InfoPlist.strings */,
+				F53634BBC75B58897680595F /* Localizable.strings */,
+			);
+			path = Resources;
+			sourceTree = "<group>";
+		};
+		529B1B695824355FC199A9B0 /* AGO */ = {
+			isa = PBXGroup;
+			children = (
+				17B2FFE835BC0F52F03DA85D /* Info.plist */,
+				BB9329CB32CCA8BBE60A77B4 /* App */,
+				53F3227F2691FA15A99F7657 /* Core */,
+				4C1F43F748C0DE6084D17D56 /* Resources */,
+				53664F16A26C958874F45131 /* Views */,
+			);
+			name = AGO;
+			path = Sources/AGO;
+			sourceTree = "<group>";
+		};
+		53664F16A26C958874F45131 /* Views */ = {
+			isa = PBXGroup;
+			children = (
+				56D35065D8A8A69BFE5438BA /* DropZoneView.swift */,
+				855D816848F777C8937202B3 /* HelpSheetView.swift */,
+				147579FD4FEA17D2F4F7C016 /* PipelineTimelineView.swift */,
+				B396F1543117545124EF438B /* TerminalLogView.swift */,
+				0104D313E5BD93FEDEB71D75 /* VerdictCardView.swift */,
+			);
+			path = Views;
+			sourceTree = "<group>";
+		};
+		53F3227F2691FA15A99F7657 /* Core */ = {
+			isa = PBXGroup;
+			children = (
+				B845E7A1609053F3385C33DE /* AppError.swift */,
+				66C9F41DB2EC7FFA76FBC53A /* AppInspector.swift */,
+				41489FE115A4C05C354AE046 /* DebugLogger.swift */,
+				E325F9601D8B23D5299F5524 /* GatePipeline.swift */,
+				E05E8AC116C10726AAE466B9 /* L10n.swift */,
+				B9061DF12CC1C297094B750F /* PipelineViewModel.swift */,
+			);
+			path = Core;
+			sourceTree = "<group>";
+		};
+		608BB1D454D62861034671FC /* Products */ = {
+			isa = PBXGroup;
+			children = (
+				7F5043652F1FBC1F26F37D05 /* AGO.app */,
+				F631491FE8A518218CC2FF28 /* AGOTests.xctest */,
+			);
+			name = Products;
+			sourceTree = "<group>";
+		};
+		6B949B73598BF2FA8231F442 = {
+			isa = PBXGroup;
+			children = (
+				529B1B695824355FC199A9B0 /* AGO */,
+				E6F44D92086C7E705C55596B /* AGOTests */,
+				608BB1D454D62861034671FC /* Products */,
+			);
+			sourceTree = "<group>";
+		};
+		BB9329CB32CCA8BBE60A77B4 /* App */ = {
+			isa = PBXGroup;
+			children = (
+				E60F9C87F12ED8BF3E41A663 /* AGOApp.swift */,
+			);
+			path = App;
+			sourceTree = "<group>";
+		};
+		E6F44D92086C7E705C55596B /* AGOTests */ = {
+			isa = PBXGroup;
+			children = (
+				5FB2AFB043761F123C4C75F5 /* PipelineTests.swift */,
+			);
+			name = AGOTests;
+			path = Tests/AGOTests;
+			sourceTree = "<group>";
+		};
+/* End PBXGroup section */
+
+/* Begin PBXNativeTarget section */
+		00ADAB25A759F324BA599604 /* AGOTests */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = 1B70E63029D52F06F119C52C /* Build configuration list for PBXNativeTarget "AGOTests" */;
+			buildPhases = (
+				CE0F0779F793A9A5451CEA13 /* Sources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+				8528DA2963B0CF6ACB30F427 /* PBXTargetDependency */,
+			);
+			name = AGOTests;
+			packageProductDependencies = (
+			);
+			productName = AGOTests;
+			productReference = F631491FE8A518218CC2FF28 /* AGOTests.xctest */;
+			productType = "com.apple.product-type.bundle.unit-test";
+		};
+		7A52092569025AC19FB113F8 /* AGO */ = {
+			isa = PBXNativeTarget;
+			buildConfigurationList = B450FA0F6D9911AB82DCF309 /* Build configuration list for PBXNativeTarget "AGO" */;
+			buildPhases = (
+				33210C542D221EAE488FCAB1 /* Sources */,
+				ACBAEFBD4FD217547C12EED0 /* Resources */,
+			);
+			buildRules = (
+			);
+			dependencies = (
+			);
+			name = AGO;
+			packageProductDependencies = (
+			);
+			productName = AGO;
+			productReference = 7F5043652F1FBC1F26F37D05 /* AGO.app */;
+			productType = "com.apple.product-type.application";
+		};
+/* End PBXNativeTarget section */
+
+/* Begin PBXProject section */
+		DD1DA18A6E18F12B241E36FD /* Project object */ = {
+			isa = PBXProject;
+			attributes = {
+				BuildIndependentTargetsInParallel = YES;
+				LastUpgradeCheck = 1430;
+				TargetAttributes = {
+				};
+			};
+			buildConfigurationList = 5FFCD63597AD009AB22845B8 /* Build configuration list for PBXProject "AGO" */;
+			developmentRegion = en;
+			hasScannedForEncodings = 0;
+			knownRegions = (
+				Base,
+				en,
+				ko,
+			);
+			mainGroup = 6B949B73598BF2FA8231F442;
+			minimizedProjectReferenceProxies = 1;
+			preferredProjectObjectVersion = 77;
+			productRefGroup = 608BB1D454D62861034671FC /* Products */;
+			projectDirPath = "";
+			projectRoot = "";
+			targets = (
+				7A52092569025AC19FB113F8 /* AGO */,
+				00ADAB25A759F324BA599604 /* AGOTests */,
+			);
+		};
+/* End PBXProject section */
+
+/* Begin PBXResourcesBuildPhase section */
+		ACBAEFBD4FD217547C12EED0 /* Resources */ = {
+			isa = PBXResourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CCD28B993AFD7B87D82251E9 /* AppIcon.icns in Resources */,
+				1697AF699FC2290F6C5DC56D /* InfoPlist.strings in Resources */,
+				FB93FAB754BE11E641E70882 /* Localizable.strings in Resources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXResourcesBuildPhase section */
+
+/* Begin PBXSourcesBuildPhase section */
+		33210C542D221EAE488FCAB1 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				D5E0CAA13C1D7E2EC73BB9CF /* AGOApp.swift in Sources */,
+				9A8EE7D2193BC5D7FC8CE61E /* AppError.swift in Sources */,
+				4B95C247B9A2A698CB47A73F /* AppInspector.swift in Sources */,
+				F7AD9EE80518563F247E5D87 /* DebugLogger.swift in Sources */,
+				FD6A811C89CC702011A3411C /* DropZoneView.swift in Sources */,
+				05969F6F54229064CE30CA72 /* GatePipeline.swift in Sources */,
+				28D2FE82A8A1FD6E4A07555E /* HelpSheetView.swift in Sources */,
+				6E44313B72372CBA46AC2ACB /* L10n.swift in Sources */,
+				344A6729D9D580766564E321 /* PipelineTimelineView.swift in Sources */,
+				4B08366FFDDA56955CFD957F /* PipelineViewModel.swift in Sources */,
+				477DFAC484D11B90179E1312 /* TerminalLogView.swift in Sources */,
+				394F6B037980CD4144DE3F54 /* VerdictCardView.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+		CE0F0779F793A9A5451CEA13 /* Sources */ = {
+			isa = PBXSourcesBuildPhase;
+			buildActionMask = 2147483647;
+			files = (
+				CA8E645CBFE54862A837FA40 /* PipelineTests.swift in Sources */,
+			);
+			runOnlyForDeploymentPostprocessing = 0;
+		};
+/* End PBXSourcesBuildPhase section */
+
+/* Begin PBXTargetDependency section */
+		8528DA2963B0CF6ACB30F427 /* PBXTargetDependency */ = {
+			isa = PBXTargetDependency;
+			target = 7A52092569025AC19FB113F8 /* AGO */;
+			targetProxy = D5004171C34AFAF318C621A1 /* PBXContainerItemProxy */;
+		};
+/* End PBXTargetDependency section */
+
+/* Begin PBXVariantGroup section */
+		EAA0145BA702B3D734B7ED67 /* InfoPlist.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				FD2F6FA6EDF726F5302F742C /* en */,
+				72A2383FDAB181C66088B6AD /* ko */,
+			);
+			name = InfoPlist.strings;
+			sourceTree = "<group>";
+		};
+		F53634BBC75B58897680595F /* Localizable.strings */ = {
+			isa = PBXVariantGroup;
+			children = (
+				3D30BFB4BD42DBF4EC2A2E4A /* en */,
+				9134146FD2CDC440C03C84A0 /* ko */,
+			);
+			name = Localizable.strings;
+			sourceTree = "<group>";
+		};
+/* End PBXVariantGroup section */
+
+/* Begin XCBuildConfiguration section */
+		3175373542EB71263AC10F19 /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/AGO/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borasarang.ago;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Debug;
+		};
+		4B6C5404989784CD5E6465D4 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borasarang.AGOTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AGO.app/Contents/MacOS/AGO";
+			};
+			name = Release;
+		};
+		4FAB83AB881FC9BC9B601007 /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = "dwarf-with-dsym";
+				ENABLE_NS_ASSERTIONS = NO;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = NO;
+				MTL_FAST_MATH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_COMPILATION_MODE = wholemodule;
+				SWIFT_OPTIMIZATION_LEVEL = "-O";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Release;
+		};
+		5DE62F9A32653A528FD0E36A /* Release */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ASSETCATALOG_COMPILER_APPICON_NAME = AppIcon;
+				ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS = NO;
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = NO;
+				INFOPLIST_FILE = Sources/AGO/Info.plist;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borasarang.ago;
+				SDKROOT = macosx;
+				SWIFT_VERSION = 6.0;
+			};
+			name = Release;
+		};
+		680E69CAB62301AA1E44B1FC /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				BUNDLE_LOADER = "$(TEST_HOST)";
+				COMBINE_HIDPI_IMAGES = YES;
+				GENERATE_INFOPLIST_FILE = YES;
+				LD_RUNPATH_SEARCH_PATHS = (
+					"$(inherited)",
+					"@executable_path/../Frameworks",
+					"@loader_path/../Frameworks",
+				);
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				PRODUCT_BUNDLE_IDENTIFIER = com.borasarang.AGOTests;
+				SDKROOT = macosx;
+				TEST_HOST = "$(BUILT_PRODUCTS_DIR)/AGO.app/Contents/MacOS/AGO";
+			};
+			name = Debug;
+		};
+		DAC145D26546E2DC67EDE7DA /* Debug */ = {
+			isa = XCBuildConfiguration;
+			buildSettings = {
+				ALWAYS_SEARCH_USER_PATHS = NO;
+				CLANG_ANALYZER_NONNULL = YES;
+				CLANG_ANALYZER_NUMBER_OBJECT_CONVERSION = YES_AGGRESSIVE;
+				CLANG_CXX_LANGUAGE_STANDARD = "gnu++14";
+				CLANG_CXX_LIBRARY = "libc++";
+				CLANG_ENABLE_MODULES = YES;
+				CLANG_ENABLE_OBJC_ARC = YES;
+				CLANG_ENABLE_OBJC_WEAK = YES;
+				CLANG_WARN_BLOCK_CAPTURE_AUTORELEASING = YES;
+				CLANG_WARN_BOOL_CONVERSION = YES;
+				CLANG_WARN_COMMA = YES;
+				CLANG_WARN_CONSTANT_CONVERSION = YES;
+				CLANG_WARN_DEPRECATED_OBJC_IMPLEMENTATIONS = YES;
+				CLANG_WARN_DIRECT_OBJC_ISA_USAGE = YES_ERROR;
+				CLANG_WARN_DOCUMENTATION_COMMENTS = YES;
+				CLANG_WARN_EMPTY_BODY = YES;
+				CLANG_WARN_ENUM_CONVERSION = YES;
+				CLANG_WARN_INFINITE_RECURSION = YES;
+				CLANG_WARN_INT_CONVERSION = YES;
+				CLANG_WARN_NON_LITERAL_NULL_CONVERSION = YES;
+				CLANG_WARN_OBJC_IMPLICIT_RETAIN_SELF = YES;
+				CLANG_WARN_OBJC_LITERAL_CONVERSION = YES;
+				CLANG_WARN_OBJC_ROOT_CLASS = YES_ERROR;
+				CLANG_WARN_QUOTED_INCLUDE_IN_FRAMEWORK_HEADER = YES;
+				CLANG_WARN_RANGE_LOOP_ANALYSIS = YES;
+				CLANG_WARN_STRICT_PROTOTYPES = YES;
+				CLANG_WARN_SUSPICIOUS_MOVE = YES;
+				CLANG_WARN_UNGUARDED_AVAILABILITY = YES_AGGRESSIVE;
+				CLANG_WARN_UNREACHABLE_CODE = YES;
+				CLANG_WARN__DUPLICATE_METHOD_MATCH = YES;
+				COPY_PHASE_STRIP = NO;
+				DEBUG_INFORMATION_FORMAT = dwarf;
+				ENABLE_STRICT_OBJC_MSGSEND = YES;
+				ENABLE_TESTABILITY = YES;
+				GCC_C_LANGUAGE_STANDARD = gnu11;
+				GCC_DYNAMIC_NO_PIC = NO;
+				GCC_NO_COMMON_BLOCKS = YES;
+				GCC_OPTIMIZATION_LEVEL = 0;
+				GCC_PREPROCESSOR_DEFINITIONS = (
+					"$(inherited)",
+					"DEBUG=1",
+				);
+				GCC_WARN_64_TO_32_BIT_CONVERSION = YES;
+				GCC_WARN_ABOUT_RETURN_TYPE = YES_ERROR;
+				GCC_WARN_UNDECLARED_SELECTOR = YES;
+				GCC_WARN_UNINITIALIZED_AUTOS = YES_AGGRESSIVE;
+				GCC_WARN_UNUSED_FUNCTION = YES;
+				GCC_WARN_UNUSED_VARIABLE = YES;
+				MACOSX_DEPLOYMENT_TARGET = 14.0;
+				MTL_ENABLE_DEBUG_INFO = INCLUDE_SOURCE;
+				MTL_FAST_MATH = YES;
+				ONLY_ACTIVE_ARCH = YES;
+				PRODUCT_NAME = "$(TARGET_NAME)";
+				SDKROOT = macosx;
+				SWIFT_ACTIVE_COMPILATION_CONDITIONS = DEBUG;
+				SWIFT_OPTIMIZATION_LEVEL = "-Onone";
+				SWIFT_VERSION = 5.0;
+			};
+			name = Debug;
+		};
+/* End XCBuildConfiguration section */
+
+/* Begin XCConfigurationList section */
+		1B70E63029D52F06F119C52C /* Build configuration list for PBXNativeTarget "AGOTests" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				680E69CAB62301AA1E44B1FC /* Debug */,
+				4B6C5404989784CD5E6465D4 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		5FFCD63597AD009AB22845B8 /* Build configuration list for PBXProject "AGO" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				DAC145D26546E2DC67EDE7DA /* Debug */,
+				4FAB83AB881FC9BC9B601007 /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+		B450FA0F6D9911AB82DCF309 /* Build configuration list for PBXNativeTarget "AGO" */ = {
+			isa = XCConfigurationList;
+			buildConfigurations = (
+				3175373542EB71263AC10F19 /* Debug */,
+				5DE62F9A32653A528FD0E36A /* Release */,
+			);
+			defaultConfigurationIsVisible = 0;
+			defaultConfigurationName = Debug;
+		};
+/* End XCConfigurationList section */
+	};
+	rootObject = DD1DA18A6E18F12B241E36FD /* Project object */;
+}

@@ -1,0 +1,54 @@
+name: AGO
+options:
+  bundleIdPrefix: com.borasarang
+  deploymentTarget:
+    macOS: "14.0"
+targets:
+  AGO:
+    type: application
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - Sources/AGO
+    settings:
+      PRODUCT_BUNDLE_IDENTIFIER: com.borasarang.ago
+      GENERATE_INFOPLIST_FILE: "NO"
+      ASSETCATALOG_COMPILER_GENERATE_SWIFT_ASSET_SYMBOL_EXTENSIONS: "NO"
+      SWIFT_VERSION: "6.0"
+    info:
+      path: Sources/AGO/Info.plist
+      # 경고: 이 파일은 xcodegen이 매번 덮어씀. 직접 수정 금지, 키는 여기 properties에 선언
+      properties:
+        CFBundleDevelopmentRegion: en
+        CFBundleDisplayName: AGO
+        CFBundleName: AGO
+        CFBundleIconFile: AppIcon
+        CFBundleShortVersionString: "0.1.0"
+        CFBundleVersion: "1"
+        LSHasLocalizedDisplayName: true
+        LSApplicationCategoryType: public.app-category.utilities
+    scheme:
+      testTargets:
+        - AGOTests
+  AGOTests:
+    type: bundle.unit-test
+    platform: macOS
+    deploymentTarget: "14.0"
+    sources:
+      - Tests/AGOTests
+    # L10n 테이블 parity 테스트용 (Bundle(for:) 조회)
+    resources:
+      - Sources/AGO/Resources/en.lproj/Localizable.strings
+      - Sources/AGO/Resources/ko.lproj/Localizable.strings
+    dependencies:
+      - target: AGO
+    settings:
+      GENERATE_INFOPLIST_FILE: "YES"
+schemes:
+  AGO:
+    build:
+      targets:
+        AGO: all
+    test:
+      targets:
+        - AGOTests

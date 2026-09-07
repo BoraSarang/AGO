@@ -1,0 +1,135 @@
+import AppKit
+import Foundation
+
+// [SYSTEM LANGUAGE LOCK] 응답과 추론은 모두 한국어
+// PipelineViewModel — 파이프라인 이벤트를 받아 UI 상태를 들고 있는 단일 진실 (T-AGO-10~14)
+// MainActor 격리. GatePipeline은 실행마다 새로 만든다.
+
+@MainActor @Observable
+final class PipelineViewModel {
+    var phase: PipelinePhase = .idle
+    /// 마지막 실패 지점 (idle 복귀 후에도 타임라인에 남긴다. 새 검사·초기화 시 해제).
+    var failedPhase: PipelinePhase?
+    var lines: [LogLine] = []
+    var verdict: PipelineVerdict = .empty
+    var appURL: URL?
+    var acknowledged = false
+    var showingHelp = false
+    /// 자동 종료 카운트다운 (초 단위, nil이면 미작동).
+    private(set) var quitCountdown: Int?
+    private var countdownTask: Task<Void, Never>?
+
+    private var pipeline: GatePipeline?
+
+    var isBusy: Bool {
+        phase == .inspecting || phase == .cleaning || phase == .verifying
+    }
+
+    var canRun: Bool {
+        phase == .ready || (phase == .blocked && acknowledged)
+    }
+
+    func inspect(url: URL) {
+        pipeline?.cancel()
+        stopQuitCountdown()
+        acknowledged = false
+        verdict = .empty
+        failedPhase = nil
+        lines = []
+        do {
+            try AppInspector.validateAppBundle(url: url)
+        } catch {
+            appURL = nil
+            let message = error.localizedDescription
+            lines = [LogLine(kind: .failure, text: message)]
+            DebugLogger.error(code: (error as? AppError)?.code ?? "E-MAC-VAL-2002", message)
+            return
+        }
+        appURL = url
+        DebugLogger.info(feature: "파일검사", "검사 요청: \(url.lastPathComponent)")
+        let pipeline = GatePipeline(onEvent: { [weak self] event in
+            guard let self else { return }
+            self.apply(event)
+        })
+        self.pipeline = pipeline
+        pipeline.inspect(url: url)
+    }
+
+    func run() {
+        guard let appURL, canRun else { return }
+        DebugLogger.info(feature: "앱실행", "실행 버튼: \(appURL.lastPathComponent)")
+        pipeline?.launch(url: appURL)
+    }
+
+    func cancel() {
+        pipeline?.cancel()
+    }
+
+    func reset() {
+        pipeline?.cancel()
+        pipeline = nil
+        stopQuitCountdown()
+        appURL = nil
+        acknowledged = false
+        verdict = .empty
+        failedPhase = nil
+        lines = []
+        phase = .idle
+        DebugLogger.info(feature: "파일검사", "초기화")
+    }
+
+    private func apply(_ event: PipelineEvent) {
+        switch event {
+        case .log(let line):
+            lines.append(line)
+            if lines.count > 500 {
+                lines.removeFirst(lines.count - 500)
+            }
+        case .phase(let newPhase):
+            phase = newPhase
+        case .verdict(let newVerdict):
+            verdict = newVerdict
+        case .failed(let at):
+            failedPhase = at
+        case .launched(let opened):
+            if opened {
+                startQuitCountdown()
+            }
+        }
+    }
+
+    // MARK: - 자동 종료 카운트다운
+
+    /// 실행 성공 후 5초 카운트다운 시작.
+    func startQuitCountdown() {
+        stopQuitCountdown()
+        quitCountdown = 5
+        DebugLogger.info(feature: "앱실행", "5초 후 자동 종료 카운트다운 시작")
+        countdownTask = Task { @MainActor [weak self] in
+            for _ in 0..<5 {
+                try? await Task.sleep(for: .seconds(1))
+                guard !Task.isCancelled, let self else { return }
+                self.tickQuitCountdown()
+            }
+        }
+    }
+
+    /// 1초 틱. 0이 되면 앱 종료. 테스트에서 직접 호출 가능 (5번째 틱은 실제 종료되므로 호출 금지).
+    func tickQuitCountdown() {
+        guard let current = quitCountdown else { return }
+        if current <= 1 {
+            quitCountdown = nil
+            countdownTask = nil
+            DebugLogger.info(feature: "앱실행", "자동 종료")
+            NSApplication.shared.terminate(nil)
+        } else {
+            quitCountdown = current - 1
+        }
+    }
+
+    private func stopQuitCountdown() {
+        countdownTask?.cancel()
+        countdownTask = nil
+        quitCountdown = nil
+    }
+}
