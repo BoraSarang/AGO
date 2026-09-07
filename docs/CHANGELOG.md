@@ -18,6 +18,7 @@
 - 앱 내 한/영 지원 (T-AGO-20): `Localizable.strings` en/ko 60종 + 전 UI·파이프라인 로그·에러 교체. 영문 실행 검증됨 (타이틀 Automatic Gate Opener)
 - 리팩토링: 미사용 코드 제거 (`statusText`·`logText`·`validationFailed` 중복 케이스·`SkeletonTests` 중복) + 프로세스 실패 로그 현지화. 테스트 17/17
 - MIT 라이선스 확정 + 랜딩/README에 실물 스크린샷 연결 (히어로 한/영, 경고 상태 한/영)
+- 문서 언어 정리: README.md(영문 기본) + README.ko.md(한글), 한글 전면 다듬기 (비격식 표현·번역체 정리, 랜딩 로케일 일치)
 - 이름 현지화 (가이드 준수): 번들 `AGO.app` 유지, 시스템 한국어→`열어줘`, 영어→`Automatic Gate Opener` (Launch Services 검증됨). `Sources/AGO/Info.plist`는 xcodegen 생성물 — 키는 `project.yml` > `info.properties`에 선언
 - 앱 아이콘 적용 (`Resources/AppIcon.icns`, `CFBundleIconFile`)
 
