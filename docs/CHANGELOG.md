@@ -2,7 +2,7 @@
 
 > 모든 기록은 한국어. platform 태그 + error_code + perf 영향 포함.
 
-## [v0.1.0] - 2026-09-07 (macos) — 로컬 마무리 (GitHub 발행 보류)
+## [v0.1.0] - 2026-09-07 (macos) — GitHub 공개 + Release + Pages 배포 완료
 - M2 파이프라인: `GatePipeline`(조회→제거→검증→평가→확인 후 실행, 취소 지원) + `AppInspector`(xattr/codesign/spctl 파싱) 추가
 - 풀커스텀 UI: 히어로 드롭존(아이콘·버전 미리보기) · 4단계 타임라인 · 터미널 로그 카드(복사·자동스크롤) · 변조 경고 카드(체크박스 게이트) · 도움말 시트(`⌘/`) · 파일 열기(`⌘O`)
 - 에러코드: E-MAC-PERM-2001~2004, E-MAC-VAL-2001~2002 사용. 점검 결과 `validationFailed` 케이스는 미사용(중복 매핑) — v1.1에서 정리 예정

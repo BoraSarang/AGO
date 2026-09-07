@@ -26,7 +26,7 @@
 - [x] T-AGO-16: smoke+unit 10/10 통과 + `./build_and_run.sh build macos` 성공
 - [x] T-AGO-17(DoD 문서): `error_message_ko.json` 점검 (validationFailed 미사용 확인) + `docs/CHANGELOG.md` 기록 + session 로그
 - [x] T-AGO-18: 풀커스텀 UI 확정 (히어로·타임라인·터미널카드·모션, `docs/DESIGN.md` §6) — 사용자 선택 2026-09-07
-- [ ] T-AGO-19: `package macos` ✅ (zip 생성됨) → GitHub 공개 repo + Release `v0.1.0` (**보류**, 2026-09-07 사용자 결정: 로컬 마무리)
+- [x] T-AGO-19: `package macos` + GitHub 공개 repo + Release `v0.1.0` + Pages 배포 — 2026-09-07 완료
 - [x] T-AGO-20: 앱 내 한/영 지원 (`Localizable.strings` en/ko + `L10n` 헬퍼, 전 UI·로그·에러 교체, 영문 실행 검증) — 2026-09-07 완료, 테스트 18/18
 
 ---
