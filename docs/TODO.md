@@ -2,9 +2,9 @@
 
 > **프로젝트**: AGO (Automatic Gate Opener)
 > **플랫폼**: macOS
-> **버전**: v1.0
-> **최종 갱신**: 2026-09-07
-> **기준 문서**: `docs/plans/PLAN_v1.0_macos.md`
+> **버전**: v1.0 완료 → v1.1 진행 중 (서명 단계)
+> **최종 갱신**: 2026-09-18
+> **기준 문서**: `docs/plans/PLAN_v1.0_macos.md` + `docs/plans/PLAN_v1.1_macos.md`
 
 ---
 
@@ -28,6 +28,13 @@
 - [x] T-AGO-18: 풀커스텀 UI 확정 (히어로·타임라인·터미널카드·모션, `docs/DESIGN.md` §6) — 사용자 선택 2026-09-07
 - [x] T-AGO-19: `package macos` + GitHub 공개 repo + Release `v0.1.0` + Pages 배포 — 2026-09-07 완료
 - [x] T-AGO-20: 앱 내 한/영 지원 (`Localizable.strings` en/ko + `L10n` 헬퍼, 전 UI·로그·에러 교체, 영문 실행 검증) — 2026-09-07 완료, 테스트 18/18
+
+### M3: 서명 단계 ✅ (v1.1, PLAN_v1.1 — 2026-09-18 완료)
+- [x] T-AGO-21: 파이프라인 `.signing` phase + 확인/스킵 + 서명 전 증거 고정 + `E-MAC-PERM-2005`
+- [x] T-AGO-22: 신원 자동탐지(`security find-identity` 파싱) + 수동 입력 폴백 (파싱 버그 수정 포함)
+- [x] T-AGO-23: 미등록자 유도 시트 (Xcode 열기 + 다시 확인)
+- [x] T-AGO-24: 5단계 타임라인 UI + 한/영 문자열 parity (19키)
+- [x] T-AGO-25: 정책 문서 개정 (PLAN/도움말/README/사이트) + 실전 검증 (PageKit·60Seconds / steam_api.bundle 사례) + CHANGELOG + session 로그
 
 ---
 

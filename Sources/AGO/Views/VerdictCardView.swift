@@ -52,6 +52,11 @@ struct VerdictCardView: View {
                 Text(L10n.s("verdict.passBody"))
                     .font(.caption)
                     .foregroundStyle(.secondary)
+                if model.verdict.signed {
+                    Text(L10n.s("verdict.signed"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             Spacer()
         }

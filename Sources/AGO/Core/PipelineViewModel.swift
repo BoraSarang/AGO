@@ -15,6 +15,13 @@ final class PipelineViewModel {
     var appURL: URL?
     var acknowledged = false
     var showingHelp = false
+    /// 서명 확인 요청 (nil이면 미표시). T-AGO-21.
+    var signPrompt: SignPrompt?
+    /// 신원 있음 → 확인 다이얼로그, 없음 → 유도 시트.
+    var showingSignConfirm = false
+    var showingSignHelp = false
+    /// 수동 입력 신원 (비어 있으면 목록 첫 번째 사용).
+    var signIdentityInput = ""
     /// 자동 종료 카운트다운 (초 단위, nil이면 미작동).
     private(set) var quitCountdown: Int?
     private var countdownTask: Task<Void, Never>?
@@ -22,7 +29,7 @@ final class PipelineViewModel {
     private var pipeline: GatePipeline?
 
     var isBusy: Bool {
-        phase == .inspecting || phase == .cleaning || phase == .verifying
+        phase == .inspecting || phase == .cleaning || phase == .verifying || phase == .signing
     }
 
     var canRun: Bool {
@@ -36,6 +43,10 @@ final class PipelineViewModel {
         verdict = .empty
         failedPhase = nil
         lines = []
+        signPrompt = nil
+        showingSignConfirm = false
+        showingSignHelp = false
+        signIdentityInput = ""
         do {
             try AppInspector.validateAppBundle(url: url)
         } catch {
@@ -75,7 +86,51 @@ final class PipelineViewModel {
         failedPhase = nil
         lines = []
         phase = .idle
+        signPrompt = nil
+        showingSignConfirm = false
+        showingSignHelp = false
+        signIdentityInput = ""
         DebugLogger.info(feature: "파일검사", "초기화")
+    }
+
+    // MARK: - 서명 결정 (T-AGO-21~23)
+
+    /// 서명하기(true)/건너뛰기(false)를 파이프라인에 전달한다.
+    func decideSign(proceed: Bool) {
+        let manual = signIdentityInput.trimmingCharacters(in: .whitespacesAndNewlines)
+        let identity = manual.isEmpty ? signPrompt?.identities.first : manual
+        DebugLogger.info(feature: "서명확인", proceed ? "서명 진행: \(identity ?? "(신원 없음)")" : "서명 스킵")
+        pipeline?.decideSign(proceed: proceed, identity: identity)
+        signPrompt = nil
+        showingSignConfirm = false
+        showingSignHelp = false
+    }
+
+    /// 미등록 유도 시트에서 Xcode를 연다.
+    func openXcode() {
+        if let url = NSWorkspace.shared.urlForApplication(withBundleIdentifier: "com.apple.dt.Xcode") {
+            NSWorkspace.shared.open(url)
+            DebugLogger.info(feature: "서명안내", "Xcode 열기")
+        } else {
+            lines.append(LogLine(kind: .failure, text: L10n.s("sign.noXcode")))
+            DebugLogger.error(code: AppError.signingFailed("").code, "Xcode 없음")
+        }
+    }
+
+    /// 유도 시트에서 신원 목록을 다시 읽는다.
+    func refreshIdentities() {
+        Task.detached { [weak self] in
+            let identities = AppInspector.parseIdentities(output: AppInspector.findIdentityOutput())
+            await MainActor.run { [weak self] in
+                guard let self, self.signPrompt != nil else { return }
+                self.signPrompt?.identities = identities
+                DebugLogger.info(feature: "서명안내", "신원 다시 확인: \(identities.count)개")
+                if !identities.isEmpty {
+                    self.showingSignHelp = false
+                    self.showingSignConfirm = true
+                }
+            }
+        }
     }
 
     private func apply(_ event: PipelineEvent) {
@@ -94,6 +149,15 @@ final class PipelineViewModel {
         case .launched(let opened):
             if opened {
                 startQuitCountdown()
+            }
+        case .signPrompt(let prompt):
+            signPrompt = prompt
+            if prompt.identities.isEmpty {
+                showingSignHelp = true
+                DebugLogger.info(feature: "서명확인", "신원 없음 — 유도 시트 표시")
+            } else {
+                showingSignConfirm = true
+                DebugLogger.info(feature: "서명확인", "서명 확인 다이얼로그 표시")
             }
         }
     }

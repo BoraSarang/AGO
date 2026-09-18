@@ -94,6 +94,26 @@ struct ContentView: View {
         .sheet(isPresented: $model.showingHelp) {
             HelpSheetView()
         }
+        // 서명 확인 (T-AGO-21): 신원 있음 → 다이얼로그, 없음 → 유도 시트.
+        .confirmationDialog(
+            L10n.s("sign.askTitle"),
+            isPresented: $model.showingSignConfirm,
+            titleVisibility: .visible
+        ) {
+            Button(L10n.s("sign.doSign")) { model.decideSign(proceed: true) }
+            Button(L10n.s("sign.skip"), role: .cancel) { model.decideSign(proceed: false) }
+        } message: {
+            Text(L10n.f("sign.askBody", model.signPrompt?.identities.first ?? "-"))
+        }
+        .sheet(
+            isPresented: $model.showingSignHelp,
+            onDismiss: {
+                // 스와이프·ESC로 닫으면 스킵으로 간주 (파이프라인 대기 해제).
+                if model.signPrompt != nil { model.decideSign(proceed: false) }
+            }
+        ) {
+            SignIdentitySheet(model: model)
+        }
     }
 
     // MARK: - 실행 행

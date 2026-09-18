@@ -26,6 +26,8 @@ enum PipelinePhase: Equatable, Sendable {
     case inspecting
     case cleaning
     case verifying
+    /// 서명 확인 대기 (사용자 결정: 서명하기/건너뛰기). T-AGO-21.
+    case signing
     case ready
     /// 변조 의심 — 경고 카드 확인(체크박스) 후에만 실행 가능.
     case blocked
@@ -38,7 +40,15 @@ struct PipelineVerdict: Equatable, Sendable {
     var spctlNote: String = ""
     /// codesign `valid on disk` 여부 (spctl 거부 시 허용 경로 판단용).
     var codesignValid: Bool = false
+    /// 개발자 신원 서명 수행 여부 (서명 전 증거는 위 필드에 그대로 유지).
+    var signed: Bool = false
     static let empty = PipelineVerdict()
+}
+
+/// 서명 확인 요청 (검증까지의 증거 + 사용 가능한 신원 목록).
+struct SignPrompt: Sendable {
+    var verdict: PipelineVerdict
+    var identities: [String]
 }
 
 enum PipelineEvent: Sendable {
@@ -49,6 +59,8 @@ enum PipelineEvent: Sendable {
     case failed(at: PipelinePhase)
     /// 실행 결과 (true면 AGO 자동 종료 카운트다운 시작).
     case launched(Bool)
+    /// 서명 확인 필요 (UI가 decideSign으로 응답할 때까지 파이프라인 일시 정지).
+    case signPrompt(SignPrompt)
 }
 
 // MARK: - 파이프라인
@@ -59,6 +71,10 @@ final class GatePipeline: @unchecked Sendable {
     private let stateLock = NSLock()
     private var _cancelled = false
     private var currentProcess: Process?
+    /// 서명 결정 대기용 (signPrompt 발행 후 UI 응답까지).
+    private let decisionLock = NSLock()
+    private var signDecision: (proceed: Bool, identity: String?)?
+    private var signWaiter: DispatchSemaphore?
 
     private var cancelled: Bool {
         get { stateLock.withLock { _cancelled } }
@@ -89,7 +105,15 @@ final class GatePipeline: @unchecked Sendable {
 
     func cancel() {
         cancelled = true
+        // 서명 결정 대기 중이면 깨워서 취소 경로로 복귀시킨다.
+        decisionLock.withLock { signWaiter }?.signal()
         stateLock.withLock { currentProcess }?.terminate()
+    }
+
+    /// UI의 서명 결정 전달 (서명하기=true + 신원, 건너뛰기=false).
+    func decideSign(proceed: Bool, identity: String?) {
+        decisionLock.withLock { signDecision = (proceed, identity) }
+        decisionLock.withLock { signWaiter }?.signal()
     }
 
     // MARK: - 검사 파이프라인
@@ -170,6 +194,34 @@ final class GatePipeline: @unchecked Sendable {
             DebugLogger.error(code: AppError.signatureInvalid([]).code, summary)
         }
 
+        // 단계 4.5: 서명 확인 (사용자 결정, 스킵 가능. T-AGO-21)
+        // 서명 전 검증 결과는 verdict에 이미 고정됨 (증거 보존).
+        emit(.phase(.signing))
+        let identities = AppInspector.parseIdentities(output: AppInspector.findIdentityOutput())
+        emitLog(.output, L10n.f("pipe.identities", identities.count))
+        emit(.signPrompt(SignPrompt(verdict: verdict, identities: identities)))
+        DebugLogger.info(feature: "GATEOPEN", "서명 확인 대기 (신원 \(identities.count)개)")
+        guard let decision = awaitSignDecision() else {
+            emitLog(.output, L10n.s("pipe.cancelled"))
+            emit(.phase(.idle))
+            DebugLogger.info(feature: "GATEOPEN", "서명 대기 중 취소")
+            return
+        }
+        if decision.proceed {
+            guard runSign(url: url, identity: decision.identity ?? identities.first ?? "") else { return }
+            verdict.signed = true
+            // 서명 후 재검증: 서명 유효성만 갱신, 변조 증거(modifiedFiles)는 유지.
+            let reverify = runProcess("/usr/bin/codesign",
+                                      ["--verify", "--deep", "--strict", "--verbose=4", url.path])
+            guard checkCancelled() else { return }
+            if case .valid = AppInspector.parseCodesign(output: reverify.output, exitCode: reverify.exitCode) {
+                verdict.codesignValid = true
+            }
+        } else {
+            emitLog(.output, L10n.s("pipe.signSkipped"))
+            DebugLogger.info(feature: "GATEOPEN", "서명 스킵")
+        }
+
         // 단계 5: 평가 (spctl)
         emitLog(.command, "$ spctl -a -vv \"\(url.path)\"")
         let spctl = runProcess("/usr/sbin/spctl", ["-a", "-vv", url.path])
@@ -183,8 +235,11 @@ final class GatePipeline: @unchecked Sendable {
             DebugLogger.info(feature: "GATEOPEN", "spctl 통과")
         case .rejected(let summary):
             // 서명은 정상인데 Gatekeeper만 거부(개발용 서명 등) → 경고 후 허용 경로.
-            // 변조 증거가 있으면 기존대로 완전 차단.
-            if verdict.codesignValid, verdict.modifiedFiles.isEmpty, verdict.codesignNote.isEmpty {
+            // 변조 증거가 있어도 우리가 서명해 현재 유효하면 허용 (증거는 카드에 유지).
+            let tamper = !verdict.modifiedFiles.isEmpty || !verdict.codesignNote.isEmpty
+            if AppInspector.spctlAllowGate(codesignValid: verdict.codesignValid,
+                                           signed: verdict.signed,
+                                           tamperEvidence: tamper) {
                 verdict.spctlNote = summary
                 emit(.verdict(verdict))
                 emit(.phase(.blocked))
@@ -211,6 +266,52 @@ final class GatePipeline: @unchecked Sendable {
             emitLog(.failure, L10n.s("pipe.warnTampered"))
         }
         DebugLogger.info(feature: "GATEOPEN", "검사 완료")
+    }
+
+    // MARK: - 서명 (사용자 확인 후, T-AGO-21)
+
+    /// signPrompt 발행 후 UI 결정을 기다린다. 취소되면 nil.
+    private func awaitSignDecision() -> (proceed: Bool, identity: String?)? {
+        let waiter = DispatchSemaphore(value: 0)
+        decisionLock.withLock { signWaiter = waiter }
+        defer { decisionLock.withLock { signWaiter = nil } }
+        while true {
+            if waiter.wait(timeout: .now() + 0.2) == .success {
+                if cancelled { return nil }
+                if let decision = decisionLock.withLock({ signDecision }) {
+                    decisionLock.withLock { signDecision = nil }
+                    return decision
+                }
+            } else if cancelled {
+                return nil
+            }
+        }
+    }
+
+    /// appex 먼저 → 본체 마지막 순서로 개발자 신원 서명한다. adhoc(`-`) 서명 금지.
+    @discardableResult
+    private func runSign(url: URL, identity: String) -> Bool {
+        guard !identity.isEmpty, identity != "-" else {
+            finishWithError(code: AppError.signingFailed("").code,
+                            message: AppError.signingFailed(identity).localizedDescription,
+                            at: .signing)
+            return false
+        }
+        for target in AppInspector.signTargets(appURL: url) {
+            emitLog(.command, "$ codesign --force -s \"\(identity)\" \"\(target.path)\"")
+            let signed = runProcess("/usr/bin/codesign", ["--force", "-s", identity, target.path])
+            emitOutput(signed.output)
+            guard checkCancelled() else { return false }
+            if signed.exitCode != 0 {
+                finishWithError(code: AppError.signingFailed("").code,
+                                message: AppError.signingFailed(target.lastPathComponent).localizedDescription,
+                                at: .signing)
+                return false
+            }
+        }
+        emitLog(.success, L10n.f("pipe.signed", identity))
+        DebugLogger.info(feature: "GATEOPEN", "서명 완료: \(identity)")
+        return true
     }
 
     // MARK: - 실행 (사용자 확인 후)

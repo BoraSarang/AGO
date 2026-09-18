@@ -144,6 +144,7 @@
         <tr><td><span class="tag ok">준비됨</span><br>서명 정상 + 통과</td><td>검사 전부 통과.</td><td>실행 버튼을 눌러 실행합니다.</td></tr>
         <tr><td><span class="tag warn">경고</span><br>변조 의심</td><td>서명과 파일 불일치 (dylib 주입 등).</td><td>빨간 카드를 살펴봅니다. 공식 출처에서 재설치하는 것이 좋으며, 그래도 실행하려면 체크박스를 선택한 뒤 실행합니다.</td></tr>
         <tr><td><span class="tag warn">경고</span><br>개발용 서명</td><td>개발 인증서로 서명되어 배포용으로 인정되지 않습니다. 악성은 아닙니다.</td><td>카드를 확인하고 체크박스를 선택한 뒤 실행합니다.</td></tr>
+        <tr><td><span class="tag warn">경고</span><br>서명 신원 발견 → 서명 완료</td><td>본인 개발자 신원으로 서명됨.</td><td>Gatekeeper 평가는 별도입니다. 카드를 확인하고 체크박스를 선택한 뒤 실행합니다.</td></tr>
         <tr><td><span class="tag stop">차단</span><br>Gatekeeper 거부</td><td>변조 증거와 함께 평가가 실패했습니다.</td><td>실행할 수 없습니다. 공식 출처에서 다시 받으세요.</td></tr>
         <tr><td><span class="tag stop">실패</span><br>차단 해제 실패</td><td>권한 문제 (주로 <code>/Applications</code> 내부).</td><td>다른 폴더(예: <code>~/Downloads</code>)로 옮긴 뒤 다시 시도합니다.</td></tr>
       </tbody>
@@ -158,7 +159,8 @@
     <h2>보안 정책</h2>
     <div class="wont">
       <ul>
-        <li>강제 재서명을 하지 않습니다. 변조 증거를 덮어버리기 때문입니다.</li>
+        <li>익명 재서명(adhoc)을 하지 않습니다. 변조 증거를 덮어버리기 때문입니다.</li>
+        <li>개발자 신원 서명은 항상 사용자 확인을 거친 뒤에만 진행합니다.</li>
         <li><code>sudo</code>를 자동으로 승격하지 않습니다.</li>
         <li>확인 없이 자동으로 실행하지 않습니다.</li>
         <li><code>.dmg</code>는 처리하지 않습니다 (v1 범위 밖).</li>

@@ -23,8 +23,9 @@ Privacy &amp; Security and click "Open Anyway". AGO does that for you in a singl
 ## Usage
 
 1. Drop the `.app` onto the AGO window, or press `⌘O` to pick it.
-2. The pipeline runs automatically: inspect → unquarantine → verify → assess.
-3. The **Run button** becomes active based on the result. Press it yourself — there is no auto-launch.
+2. The pipeline runs automatically: inspect → unquarantine → verify → sign → assess.
+3. After verification it asks **"Sign this app?"**. Signing grants the app your own developer identity; skipping continues the inspection.
+4. The **Run button** becomes active based on the result. Press it yourself — there is no auto-launch.
 
 ## Message Reference
 
@@ -34,14 +35,15 @@ Privacy &amp; Security and click "Open Anyway". AGO does that for you in a singl
 | `signature valid` + `Gatekeeper accepted` | All checks passed | Press Run |
 | `tampering suspected: N files added/modified` | Files don't match the signature (e.g. dylib injection) | Read the red warning card → reinstall from the official source is recommended. To run anyway, tick the checkbox, then press Run |
 | `development signature` | Signed with a development certificate, not for distribution. Not malware | Check the warning card → tick the checkbox, then press Run |
+| `signing identity found` → `signed` | App signed with your own developer identity | Gatekeeper is still assessed separately. Check the warning card → tick the checkbox, then press Run |
 | `Gatekeeper refused` | Assessment failed with tampering evidence | Cannot run. Download again from the official source |
 | `failed to remove quarantine` | Permission problem (usually inside `/Applications`) | Move the app elsewhere (e.g. `~/Downloads`) and retry |
 
 ## Security Policy
 
-These capabilities are not provided:
-
-- No forced re-signing (`codesign --force`) — it would overwrite tampering evidence
+- No anonymous re-signing (adhoc `codesign --force --sign -`) — it would overwrite tampering evidence
+- Only **your own developer identity (Apple Development)** can be applied, always after your confirmation (v0.2.0+). Identities are auto-detected from the keychain; if none, you're guided to sign in to Xcode or can skip
+- Pre-signing inspection results stay in the log and warning card, so signing never hides tampering evidence
 - No automatic `sudo` escalation
 - No launching without user confirmation
 - No `.dmg` handling (out of scope for v1)

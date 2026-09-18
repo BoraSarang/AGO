@@ -1,8 +1,9 @@
 import SwiftUI
 
 // [SYSTEM LANGUAGE LOCK] 응답과 추론은 모두 한국어
-// PipelineTimelineView — 확인 → 제거 → 검증 → 실행 4단계 타임라인 (T-AGO-14)
+// PipelineTimelineView — 확인 → 제거 → 검증 → 서명 → 실행 5단계 타임라인 (T-AGO-14, T-AGO-24)
 // 성공은 체크, 실패 지점은 빨간 X로 남긴다 (idle 복귀 후에도 failed가 유지됨).
+// 서명 스킵 시에도 서명 단계는 완료로 표시 (위 state에서 ready/blocked → .done).
 
 enum TimelineStepState: Equatable, Sendable {
     case pending
@@ -16,12 +17,13 @@ struct PipelineTimelineView: View {
     var failed: PipelinePhase?
 
     enum Step: Int, CaseIterable {
-        case check, clean, verify, run
+        case check, clean, verify, sign, run
         var title: String {
             switch self {
             case .check: L10n.s("step.check")
             case .clean: L10n.s("step.clean")
             case .verify: L10n.s("step.verify")
+            case .sign: L10n.s("step.sign")
             case .run: L10n.s("step.run")
             }
         }
@@ -49,6 +51,7 @@ struct PipelineTimelineView: View {
         case .inspecting: 0
         case .cleaning: 1
         case .verifying: 2
+        case .signing: 3
         case .idle, .ready, .blocked: nil
         }
     }

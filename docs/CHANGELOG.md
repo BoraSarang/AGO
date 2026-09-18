@@ -2,6 +2,16 @@
 
 > 모든 기록은 한국어. platform 태그 + error_code + perf 영향 포함.
 
+## [v0.2.0] - 2026-09-18 (macos) — 서명 단계 (v1.1, PLAN_v1.1)
+- 파이프라인 `.signing` 단계 (T-AGO-21): 판정 후 자동으로 서명 확인 다이얼로그(확인/스킵) → 확인 시 `codesign --force -s` 개별 서명 (중첩 코드 먼저, 본체 마지막). 서명 전 확인한 변조 증거는 서명 후에도 verdict에 유지
+- 서명 대상 확대 (60SecondsReatomized 실패 사례 반영): `Contents/PlugIns`의 `.appex`·`.bundle` + `Contents/Frameworks`의 `.framework`·`.dylib` 경로 정렬 후 개별 서명. `errSecInternalComponent` 미서명 중첩(`steam_api.bundle` 등) 해소 — E2E: 사본 전체 서명 → `valid on disk` + spctl `rejected`(개발 서명) 확인
+- 경고 카드 게이트 완화: 서명 후 현재 유효(`codesignValid`)하면 변조 증거가 있어도 경고 카드 + 체크박스 실행 허용 (`AppInspector.spctlAllowGate`). 미서명·무효 변조는 여전히 완전 차단 (E-MAC-PERM-2005)
+- 신원 관련 (T-AGO-22~23): `security find-identity -v -p codesigning` 파싱 버그 수정(해시 뒤 따옴표 이름 추출), 신원 자동탐지→없으면 수동 입력 + 미등록자 Xcode 유도 시트 신규 (SignPromptView)
+- UI (T-AGO-24): 타임라인 5단계(조회→제거→검증→평가→서명) + 서명 상태 표시. 한/영 문자열 19키 추가 (parity). 하단 버전 v0.2.0
+- 정책 (T-AGO-25): 변조 앱도 서명 허용으로 개정 (PLAN/도움말/README.ko·README.md/사이트 ko·en 동기화). adhoc 서명 금지 유지
+- 에러코드 신설: `E-MAC-PERM-2005` (변조 무효 증거 차단/서명 실패). error_message_ko.json 추가
+- 테스트 21/21 통과 (신규: signTargets 순서 `.bundle`·`.dylib` 반영, spctlAllowGate 4케이스). 빌드+배포 `~/Applications/AGO.app` 완료
+
 ## [v0.1.0] - 2026-09-07 (macos) — GitHub 공개 + Release + Pages 배포 완료
 - M2 파이프라인: `GatePipeline`(조회→제거→검증→평가→확인 후 실행, 취소 지원) + `AppInspector`(xattr/codesign/spctl 파싱) 추가
 - 풀커스텀 UI: 히어로 드롭존(아이콘·버전 미리보기) · 4단계 타임라인 · 터미널 로그 카드(복사·자동스크롤) · 변조 경고 카드(체크박스 게이트) · 도움말 시트(`⌘/`) · 파일 열기(`⌘O`)

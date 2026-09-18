@@ -84,6 +84,57 @@ struct InspectorTests {
             #expect(error.code == "E-MAC-VAL-2002")
         }
     }
+
+    @Test("find-identity 신원 추출 (PageKit 사례)")
+    func parsesIdentities() {
+        let out = """
+          1) 76811B50FF3F9015B9E287FC6829806E1D42B9DB "Apple Development: a@b.c (TEAMID)"
+             1 valid identities found
+        """
+        #expect(AppInspector.parseIdentities(output: out) == ["Apple Development: a@b.c (TEAMID)"])
+        #expect(AppInspector.parseIdentities(output: "     0 valid identities found\n") == [])
+        #expect(AppInspector.parseIdentities(output: "") == [])
+    }
+
+    @Test("서명 대상은 중첩 코드 먼저·본체 마지막 (.bundle/.dylib 포함)")
+    func signTargetsOrder() throws {
+        let base = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AGOSignTest-\(UUID().uuidString).app")
+        let plugins = base.appendingPathComponent("Contents/PlugIns")
+        let frameworks = base.appendingPathComponent("Contents/Frameworks")
+        try FileManager.default.createDirectory(at: frameworks, withIntermediateDirectories: true)
+        try FileManager.default.createDirectory(at: plugins, withIntermediateDirectories: true)
+        let bAppex = plugins.appendingPathComponent("B.appex")
+        let aAppex = plugins.appendingPathComponent("A.appex")
+        let zBundle = plugins.appendingPathComponent("z.bundle")
+        let dDylib = frameworks.appendingPathComponent("d.dylib")
+        for url in [aAppex, bAppex, zBundle, dDylib] {
+            try FileManager.default.createDirectory(at: url, withIntermediateDirectories: true)
+        }
+        defer { try? FileManager.default.removeItem(at: base) }
+        // 전체 경로 정렬: Frameworks/d.dylib < PlugIns/A.appex < PlugIns/B.appex < PlugIns/z.bundle < 본체
+        let expected = [
+            dDylib.standardizedFileURL,
+            aAppex.standardizedFileURL,
+            bAppex.standardizedFileURL,
+            zBundle.standardizedFileURL,
+            base.standardizedFileURL,
+        ]
+        #expect(AppInspector.signTargets(appURL: base) == expected)
+        let plain = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AGOPlain-\(UUID().uuidString).app")
+        try FileManager.default.createDirectory(at: plain, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: plain) }
+        #expect(AppInspector.signTargets(appURL: plain) == [plain.standardizedFileURL])
+    }
+
+    @Test("spctl 게이트: 서명된 변조 앱은 허용, 미서명 변조는 차단")
+    func spctlAllowGate() {
+        #expect(AppInspector.spctlAllowGate(codesignValid: true, signed: false, tamperEvidence: false))
+        #expect(AppInspector.spctlAllowGate(codesignValid: true, signed: true, tamperEvidence: true))
+        #expect(!AppInspector.spctlAllowGate(codesignValid: false, signed: true, tamperEvidence: true))
+        #expect(!AppInspector.spctlAllowGate(codesignValid: true, signed: false, tamperEvidence: true))
+    }
 }
 
 @Suite("타임라인 상태")
@@ -119,6 +170,16 @@ struct TimelineTests {
             #expect(PipelineTimelineView.state(step: step, phase: .ready, failed: nil) == .done)
             #expect(PipelineTimelineView.state(step: step, phase: .blocked, failed: nil) == .done)
         }
+    }
+
+    @Test("서명 단계 매핑 (5단계)")
+    func signingStep() {
+        #expect(Step.allCases.count == 5)
+        #expect(PipelineTimelineView.stepIndex(phase: .signing) == 3)
+        #expect(PipelineTimelineView.state(step: .sign, phase: .signing, failed: nil) == .active)
+        #expect(PipelineTimelineView.state(step: .verify, phase: .signing, failed: nil) == .done)
+        #expect(PipelineTimelineView.state(step: .run, phase: .signing, failed: nil) == .pending)
+        #expect(PipelineTimelineView.state(step: .sign, phase: .idle, failed: .signing) == .failed)
     }
 }
 @Suite("상태머신·에러코드")
@@ -191,5 +252,7 @@ struct PipelineModelTests {
         #expect(AppError.signatureInvalid([]).code == "E-MAC-VAL-2001")
         #expect(AppError.gatekeeperRejected("x").code == "E-MAC-PERM-2003")
         #expect(AppError.launchFailed("x").code == "E-MAC-PERM-2004")
+        #expect(AppError.signingFailed("x").code == "E-MAC-PERM-2005")
+        #expect(AppError.signingFailed("x").errorDescription?.contains("서명") == true)
     }
 }
