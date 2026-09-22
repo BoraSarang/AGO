@@ -270,12 +270,27 @@ struct PipelineModelTests {
 
     @Test("에러코드가 한글 메시지를 가진다")
     func errorCodesHaveKoreanMessages() {
-        #expect(AppError.notAnAppBundle("x").errorDescription?.contains(".app") == true)
+        // 시스템 locale 무관: 앱 번들의 ko 테이블에서 직접 읽는다.
+        // errorDescription은 NSLocalizedString라 영어 locale CI 러너에선 영문이 나온다.
+        let ko = Self.koreanStrings()
+        #expect(ko["err.signing"]?.contains("서명") == true)
+        #expect(ko["err.notapp"]?.contains(".app") == true)
+        #expect(ko["err.gatekeeper"]?.contains("거부") == true)
+        #expect(AppError.notAnAppBundle("x").code == "E-MAC-VAL-2002")
         #expect(AppError.quarantineRemoveFailed("x").code == "E-MAC-PERM-2002")
         #expect(AppError.signatureInvalid([]).code == "E-MAC-VAL-2001")
         #expect(AppError.gatekeeperRejected("x").code == "E-MAC-PERM-2003")
         #expect(AppError.launchFailed("x").code == "E-MAC-PERM-2004")
         #expect(AppError.signingFailed("x").code == "E-MAC-PERM-2005")
-        #expect(AppError.signingFailed("x").errorDescription?.contains("서명") == true)
+    }
+
+    /// 앱 번들(테스트 호스트)의 ko.lproj 테이블을 시스템 locale과 무관하게 읽는다.
+    private static func koreanStrings() -> [String: String] {
+        guard let url = Bundle(for: GatePipeline.self)
+            .url(forResource: "Localizable", withExtension: "strings", subdirectory: "ko.lproj"),
+            let dict = NSDictionary(contentsOf: url) as? [String: String] else {
+            return [:]
+        }
+        return dict
     }
 }
