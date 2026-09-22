@@ -24,10 +24,11 @@ struct AGOApp: App {
     @NSApplicationDelegateAdaptor(AGOAppDelegate.self) private var appDelegate
     @AppStorage("agoPinned") private var pinned = true
     @State private var model = PipelineViewModel()
+    @State private var update = UpdateModel()
 
     var body: some Scene {
         WindowGroup {
-            ContentView(model: model, pinned: $pinned)
+            ContentView(model: model, pinned: $pinned, update: update)
                 .onReceive(NotificationCenter.default.publisher(for: .agoShowHelp)) { _ in
                     model.showingHelp = true
                 }
@@ -54,6 +55,7 @@ struct AGOApp: App {
 struct ContentView: View {
     @Bindable var model: PipelineViewModel
     @Binding var pinned: Bool
+    @Bindable var update: UpdateModel
 
     var body: some View {
         VStack(spacing: 12) {
@@ -90,9 +92,11 @@ struct ContentView: View {
                     NSApp.keyWindow?.level = .floating
                 }
             }
+            // 주기(기본 주 1회)가 됐을 때만 조용히 업데이트 확인 → 있으면 시트.
+            Task { await update.maybeAutoCheck() }
         }
         .sheet(isPresented: $model.showingHelp) {
-            HelpSheetView()
+            HelpSheetView(update: update)
         }
         // 서명 확인 (T-AGO-21): 신원 있음 → 다이얼로그, 없음 → 유도 시트.
         .confirmationDialog(
@@ -113,6 +117,10 @@ struct ContentView: View {
             }
         ) {
             SignIdentitySheet(model: model)
+        }
+        // 업데이트 시트 — 닫힌 창 없이 단일 윈도우 구조라 ContentView에 부착 (가이드 팝오버 경로 불필요).
+        .sheet(isPresented: $update.showingSheet) {
+            UpdateAvailableSheet(update: update)
         }
     }
 
@@ -155,13 +163,27 @@ struct ContentView: View {
 
     private var bottomBar: some View {
         HStack {
+            Toggle(L10n.s("sign.skipToggle"), isOn: $model.skipSigning)
+                .toggleStyle(.checkbox)
+                .help(L10n.s("sign.skipToggleHelp"))
+                .font(.callout)
             Button(L10n.s("app.help")) { model.showingHelp = true }
                 .buttonStyle(.link)
                 .keyboardShortcut("/", modifiers: .command)
-            Text("v\(appVersion)")
-                .font(.caption2)
-                .foregroundStyle(.tertiary)
-                .monospacedDigit()
+            if let release = update.availableRelease {
+                // 업데이트 있으면 버전 자리가 오렌지 배지로 바뀌고 클릭 시 시트 (가이드 패턴).
+                Button { update.showingSheet = true } label: {
+                    Text(L10n.f("update.badge", release.tagName))
+                }
+                .buttonStyle(.link)
+                .foregroundStyle(.orange)
+                .help(L10n.s("update.sheetTitle"))
+            } else {
+                Text("v\(appVersion)")
+                    .font(.caption2)
+                    .foregroundStyle(.tertiary)
+                    .monospacedDigit()
+            }
             Spacer()
             contactLinks
             Button(L10n.s("app.quit")) { NSApplication.shared.terminate(nil) }

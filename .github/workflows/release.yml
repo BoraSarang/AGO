@@ -1,0 +1,57 @@
+name: Release
+on:
+  push:
+    tags: ["v*.*.*"]
+permissions:
+  contents: write
+jobs:
+  build-and-release:
+    runs-on: macos-latest
+    steps:
+      - uses: actions/checkout@v4
+      - run: xcodebuild -version
+      - run: brew install xcodegen
+      - run: xcodegen
+      # 태그와 번들 버전 일치 검증 (xcodegen이 Info.plist를 생성한 뒤 확인 — AGO는 Info.plist가 생성물)
+      - name: Verify tag matches bundle version
+        run: |
+          TAG="${GITHUB_REF_NAME}"
+          EXPECTED="${TAG#v}"
+          ACTUAL="$(/usr/libexec/PlistBuddy -c \
+            'Print CFBundleShortVersionString' Sources/AGO/Info.plist)"
+          echo "tag=${EXPECTED} plist=${ACTUAL}"
+          [ "$EXPECTED" = "$ACTUAL" ]
+      - name: Test
+        run: |
+          xcodebuild -project AGO.xcodeproj -scheme AGO \
+            -destination 'platform=macOS' -configuration Debug \
+            -derivedDataPath build test
+      - name: Build Release
+        run: |
+          xcodebuild -project AGO.xcodeproj -scheme AGO \
+            -destination 'platform=macOS' -configuration Release \
+            -derivedDataPath build \
+            CODE_SIGNING_ALLOWED=NO build
+      - name: Ad-hoc sign, DMG, GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          APP_PATH="$(find build -name 'AGO.app' -type d | head -1)"
+          test -n "$APP_PATH"
+          codesign --force --deep --sign - "$APP_PATH"
+          STAGING="$(mktemp -d)"
+          cp -R "$APP_PATH" "$STAGING/"
+          ln -s /Applications "$STAGING/Applications"
+          hdiutil create -volname "AGO ${GITHUB_REF_NAME}" \
+            -srcfolder "$STAGING" -ov -format UDZO \
+            "AGO-${GITHUB_REF_NAME}-macos.dmg"
+          # release-notes/<tag>.md가 있으면 그것을 본문으로, 없으면 자동 생성
+          if [ -f "release-notes/${GITHUB_REF_NAME}.md" ]; then
+            gh release create "$GITHUB_REF_NAME" --title "AGO $GITHUB_REF_NAME" \
+              --notes-file "release-notes/${GITHUB_REF_NAME}.md" \
+              "AGO-${GITHUB_REF_NAME}-macos.dmg"
+          else
+            gh release create "$GITHUB_REF_NAME" --title "AGO $GITHUB_REF_NAME" \
+              --generate-notes \
+              "AGO-${GITHUB_REF_NAME}-macos.dmg"
+          fi

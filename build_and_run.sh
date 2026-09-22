@@ -13,7 +13,7 @@ set -euo pipefail
 # ──────────────────────────────────────────────────────────────
 PROJECT_NAME="AGO"
 BUNDLE_ID="com.borasarang.ago"
-VERSION="${VERSION:-0.1.0}"
+VERSION="${VERSION:-0.2.2}"
 XCODE_PROJECT="${PROJECT_NAME}.xcodeproj"
 SCHEME="${PROJECT_NAME}"
 CONFIGURATION="Debug"
@@ -132,10 +132,8 @@ cmd_debug() {
 cmd_run() {
   local platform="${1:-macos}"
 
-  if [[ ! -d "${APP_PATH}" ]]; then
-    log_warn "빌드된 앱 없음. 빌드 먼저 실행..."
-    cmd_build "${platform}"
-  fi
+  # 항상 재빌드 (APP_PATH가 이미 있으면 구 빌드를 배포하는 함정 방지)
+  cmd_build "${platform}"
 
   # 기존 앱 제거 후 복사
   if [[ -d "${TARGET_APP_PATH}" ]]; then
@@ -162,6 +160,9 @@ cmd_clean() {
 cmd_package() {
   local platform="${1:-macos}"
 
+  # 배포 패키징은 Release로 (Debug 아티팩트 배포 방지)
+  CONFIGURATION="Release"
+  APP_PATH="${DERIVED_DATA_PATH}/Build/Products/${CONFIGURATION}/${PROJECT_NAME}.app"
   cmd_build "${platform}"
 
   if [[ ! -d "${APP_PATH}" ]]; then
@@ -170,16 +171,25 @@ cmd_package() {
   fi
 
   mkdir -p "${DIST_DIR}"
-  if [[ -f "${ZIP_PATH}" ]]; then
-    log_info "기존 압축 제거: ${ZIP_PATH}"
-    rm -f "${ZIP_PATH}"
+  local dmg_path="${DIST_DIR}/${PROJECT_NAME}-${VERSION}-macos.dmg"
+  if [[ -f "${dmg_path}" ]]; then
+    log_info "기존 DMG 제거: ${dmg_path}"
+    rm -f "${dmg_path}"
   fi
 
-  log_info "ZIP 패키징 (unsigned): ${ZIP_PATH}"
-  ditto -c -k --sequesterRsrc --keepParent "${APP_PATH}" "${ZIP_PATH}"
+  # DMG: 앱 + /Applications 심링크 (가이드 LiteRT-LM Studio 방식)
+  local staging
+  staging="$(mktemp -d)"
+  cp -R "${APP_PATH}" "${staging}/"
+  ln -s /Applications "${staging}/Applications"
 
-  log_ok "패키징 완료: ${ZIP_PATH}"
-  log_warn "unsigned 배포 — Release 노트에 차단 해제 안내 포함 필요"
+  log_info "DMG 패키징 (unsigned): ${dmg_path}"
+  hdiutil create -volname "${PROJECT_NAME} ${VERSION}" \
+    -srcfolder "${staging}" -ov -format UDZO "${dmg_path}"
+  rm -rf "${staging}"
+
+  log_ok "패키징 완료: ${dmg_path}"
+  log_warn "unsigned 배포 — 첫 실행 우클릭→열기 안내 포함 필요"
 }
 
 # ──────────────────────────────────────────────────────────────
@@ -202,7 +212,7 @@ Commands:
   test [platform] [type]     테스트 실행 (smoke|unit|full, 기본: smoke)
   debug [platform]           빌드 + 디버그 앱 실행
   run [platform]             빌드 + ~/Applications 복사 + 실행
-  package [platform]         빌드 + .zip 패키징 → dist/ (GitHub Release용, unsigned)
+  package [platform]         빌드(Release) + DMG 패키징 → dist/ (GitHub Release용, unsigned)
   clean                      빌드 산출물 정리
   help                       이 도움말
 

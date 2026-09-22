@@ -13,6 +13,28 @@ struct InspectorTests {
         #expect(!AppInspector.hasQuarantine(xattrOutput: ""))
     }
 
+    @Test("provenance 속성 감지 — quarantine과 독립")
+    func detectsProvenance() {
+        let both = "com.apple.provenance: f63842ce318d\ncom.apple.quarantine: 0083;abc;\n"
+        #expect(AppInspector.hasProvenance(xattrOutput: both))
+        #expect(AppInspector.hasQuarantine(xattrOutput: both))
+        let onlyQ = "com.apple.quarantine: 0083;abc;\n"
+        #expect(!AppInspector.hasProvenance(xattrOutput: onlyQ))
+        #expect(AppInspector.hasQuarantine(xattrOutput: onlyQ))
+        let onlyP = "com.apple.provenance: f63842ce318d\n"
+        #expect(AppInspector.hasProvenance(xattrOutput: onlyP))
+        #expect(!AppInspector.hasQuarantine(xattrOutput: onlyP))
+        #expect(!AppInspector.hasProvenance(xattrOutput: ""))
+    }
+
+    @Test("macl 속성 감지 — 드래그 귀속 표식")
+    func detectsMacl() {
+        let withM = "com.apple.macl: \\x01DL...\ncom.apple.provenance: f63842ce318d\n"
+        #expect(AppInspector.hasMacl(xattrOutput: withM))
+        #expect(!AppInspector.hasMacl(xattrOutput: "com.apple.provenance: x\n"))
+        #expect(!AppInspector.hasMacl(xattrOutput: ""))
+    }
+
     @Test("codesign 정상 판정")
     func codesignValid() {
         let out = "/Applications/Foo.app: valid on disk\n/Applications/Foo.app: satisfies its Designated Requirement"
@@ -232,6 +254,7 @@ struct PipelineModelTests {
     @Test("판정 기본값은 빈 상태")
     func emptyVerdict() {
         #expect(PipelineVerdict.empty.modifiedFiles.isEmpty)
+        #expect(!PipelineVerdict.empty.hadProvenance)
         #expect(PipelineVerdict.empty == PipelineVerdict())
     }
 

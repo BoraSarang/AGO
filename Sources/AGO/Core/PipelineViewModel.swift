@@ -17,6 +17,8 @@ final class PipelineViewModel {
     var showingHelp = false
     /// 서명 확인 요청 (nil이면 미표시). T-AGO-21.
     var signPrompt: SignPrompt?
+    /// 서명 건너뛰기 체크박스 (기본 체크). 체크 시 확인 다이얼로그 없이 자동 스킵.
+    var skipSigning = true
     /// 신원 있음 → 확인 다이얼로그, 없음 → 유도 시트.
     var showingSignConfirm = false
     var showingSignHelp = false
@@ -155,6 +157,11 @@ final class PipelineViewModel {
             if prompt.identities.isEmpty {
                 showingSignHelp = true
                 DebugLogger.info(feature: "서명확인", "신원 없음 — 유도 시트 표시")
+            } else if skipSigning {
+                // 체크 박스 기본 ON: 확인 없이 서명을 건너뛴다.
+                DebugLogger.info(feature: "서명확인", "자동 건너뛰기 (체크박스 ON)")
+                lines.append(LogLine(kind: .output, text: L10n.s("pipe.signAutoSkipped")))
+                decideSign(proceed: false)
             } else {
                 showingSignConfirm = true
                 DebugLogger.info(feature: "서명확인", "서명 확인 다이얼로그 표시")

@@ -57,6 +57,11 @@ struct VerdictCardView: View {
                         .font(.caption)
                         .foregroundStyle(.secondary)
                 }
+                if model.verdict.hadProvenance {
+                    Text(L10n.s("verdict.provenance"))
+                        .font(.caption)
+                        .foregroundStyle(.secondary)
+                }
             }
             Spacer()
         }
@@ -88,6 +93,11 @@ struct VerdictCardView: View {
                             .font(.system(size: 11, design: .monospaced))
                             .foregroundStyle(.secondary)
                             .lineLimit(2)
+                    }
+                    if model.verdict.hadProvenance {
+                        Text(L10n.s("verdict.provenance"))
+                            .font(.caption)
+                            .foregroundStyle(.secondary)
                     }
                 }
                 Spacer()

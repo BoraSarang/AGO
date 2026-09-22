@@ -43,6 +43,22 @@ enum AppInspector {
         xattrOutput.contains("com.apple.quarantine")
     }
 
+    /// `xattr -l` 출력에 출처 속성(`com.apple.provenance`)이 있는지 확인.
+    /// macOS 15 이후 인터넷 다운로드 파일에 함께 붙는 스탬프다. quarantine만 지우고
+    /// 이게 남으면 macOS 26+는 실행 시점 재평가(Gatekeeper 확인 창)를 다시 띄우므로
+    /// quarantine과 함께 처리해야 한다.
+    static func hasProvenance(xattrOutput: String) -> Bool {
+        xattrOutput.contains("com.apple.provenance")
+    }
+
+    /// `xattr -l` 출력에 권한 귀속 속성(`com.apple.macl`)이 있는지 확인.
+    /// 드래그·"다음으로 열기"로 다른 앱이 실행할 때 macOS가 붙이는 스탬프다. 남아 있으면
+    /// 크랙/미인정 서명 앱의 경우 TCC(개발자 도구 등) 요청 시점에 커널 정책이 강제종료하므로
+    /// 실행 정리는 quarantine/provenance와 함께 처리한다.
+    static func hasMacl(xattrOutput: String) -> Bool {
+        xattrOutput.contains("com.apple.macl")
+    }
+
     // MARK: - codesign 파싱 (PLAN 2.2 단계 4)
 
     /// `codesign --verify --deep --strict --verbose=4` 출력 파싱.

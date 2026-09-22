@@ -38,6 +38,9 @@ struct PipelineVerdict: Equatable, Sendable {
     var modifiedFiles: [String] = []
     var codesignNote: String = ""
     var spctlNote: String = ""
+    /// 서명 정상 여부 판단 전 발견한 것 (macOS 26+ 출처 속성). 제거됐으면 true.
+    /// 타임라인/경고 카드에 "함께 제거됨" 안내로 표시한다.
+    var hadProvenance: Bool = false
     /// codesign `valid on disk` 여부 (spctl 거부 시 허용 경로 판단용).
     var codesignValid: Bool = false
     /// 개발자 신원 서명 수행 여부 (서명 전 증거는 위 필드에 그대로 유지).
@@ -149,22 +152,46 @@ final class GatePipeline: @unchecked Sendable {
             return
         }
         let quarantined = AppInspector.hasQuarantine(xattrOutput: xattrList.output)
+        let provenanced = AppInspector.hasProvenance(xattrOutput: xattrList.output)
+        let macled = AppInspector.hasMacl(xattrOutput: xattrList.output)
+        if provenanced {
+            emitLog(.output, L10n.s("pipe.provenanceFound"))
+            DebugLogger.info(feature: "GATEOPEN", "macOS 26+ 출처 속성 감지 (com.apple.provenance)")
+        }
+        if macled {
+            emitLog(.output, L10n.s("pipe.maclFound"))
+            DebugLogger.info(feature: "GATEOPEN", "권한 귀속 속성 감지 (com.apple.macl)")
+        }
 
-        // 단계 3: 제거 (quarantine이 있을 때만)
+        // 단계 3: 제거 (stamp가 있을 때만)
+        // - quarantine: 인터넷 다운로드 표식. 무시하면 Gatekeeper 경고.
+        // - com.apple.provenance: macOS 26+ 출처 속성. quarantine만 지우고 남으면 실행 시점
+        //   재평가(Gatekeeper 확인 창)를 다시 띄우므로 함께 정리한다.
+        // - com.apple.macl: 드래그/"다음으로 열기"로 다른 앱이 실행할 때 표식. 남아 있으면
+        //   미인정 서명 앱이 TCC(개발자 도구 등) 요청 시점에 커널 정책이 강제종료하므로 정리한다.
+        var verdict = PipelineVerdict()
+        verdict.hadProvenance = provenanced
         emit(.phase(.cleaning))
-        if quarantined {
-            emitLog(.command, "$ xattr -dr com.apple.quarantine \"\(url.path)\"")
-            let removed = runProcess("/usr/bin/xattr", ["-dr", "com.apple.quarantine", url.path])
-            emitOutput(removed.output)
-            guard checkCancelled() else { return }
-            if removed.exitCode != 0 {
-                finishWithError(code: AppError.quarantineRemoveFailed("").code,
-                                message: AppError.quarantineRemoveFailed("").localizedDescription,
-                                at: .cleaning)
-                return
+        let stamps: [(attribute: String, present: Bool, successKey: String)] = [
+            ("com.apple.quarantine", quarantined, "pipe.removed"),
+            ("com.apple.provenance", provenanced, "pipe.provenanceRemoved"),
+            ("com.apple.macl", macled, "pipe.maclRemoved"),
+        ]
+        if stamps.contains(where: { $0.present }) {
+            for stamp in stamps where stamp.present {
+                emitLog(.command, "$ xattr -dr \(stamp.attribute) \"\(url.path)\"")
+                let removed = runProcess("/usr/bin/xattr", ["-dr", stamp.attribute, url.path])
+                emitOutput(removed.output)
+                guard checkCancelled() else { return }
+                if removed.exitCode != 0 {
+                    finishWithError(code: AppError.quarantineRemoveFailed("").code,
+                                    message: AppError.quarantineRemoveFailed("").localizedDescription,
+                                    at: .cleaning)
+                    return
+                }
+                emitLog(.success, L10n.s(stamp.successKey))
+                DebugLogger.info(feature: "GATEOPEN", "\(stamp.attribute) 제거 성공")
             }
-            emitLog(.success, L10n.s("pipe.removed"))
-            DebugLogger.info(feature: "GATEOPEN", "quarantine 제거 성공")
         } else {
             emitLog(.output, L10n.s("pipe.noQuarantine"))
         }
@@ -177,7 +204,6 @@ final class GatePipeline: @unchecked Sendable {
         emitOutput(AppInspector.summarizeCodesign(output: codesign.output))
         guard checkCancelled() else { return }
 
-        var verdict = PipelineVerdict()
         switch AppInspector.parseCodesign(output: codesign.output, exitCode: codesign.exitCode) {
         case .valid:
             verdict.codesignValid = true
@@ -319,14 +345,78 @@ final class GatePipeline: @unchecked Sendable {
     private func runLaunch(url: URL) {
         emitLog(.command, "$ open \"\(url.path)\"")
         DebugLogger.info(feature: "GATEOPEN", "사용자 확인 후 실행: \(url.lastPathComponent)")
-        let opened = NSWorkspace.shared.open(url)
-        if opened {
-            emitLog(.success, L10n.s("pipe.launched"))
-        } else {
-            emitLog(.failure, AppError.launchFailed(url.lastPathComponent).localizedDescription)
-            DebugLogger.error(code: AppError.launchFailed("").code, url.lastPathComponent)
+
+        // 실행 직전 상태를 확정한다. 파이프라인 처리(몇 초) 사이에 macOS가 드래그 맥락으로
+        // quarantine/provenance/macl을 다시 붙이면 실행 시점 Gatekeeper 평가에서
+        // "Gatekeeper rejection"으로 종료된다(실전 16:41 관측). 성공이 확인된 수동 절차
+        // (3속성 제거 직후 open)와 같은 순간을 만들기 위해 직전에 다시 정리한다.
+        let snap = runProcess("/usr/bin/xattr", ["-l", url.path]).output
+        let present = ["com.apple.quarantine", "com.apple.provenance", "com.apple.macl"]
+            .filter { snap.contains($0) }
+        DebugLogger.info(feature: "GATEOPEN", "실행 직전 속성: \(present.isEmpty ? "없음" : present.joined(separator: ","))")
+        for attr in ["com.apple.quarantine", "com.apple.provenance", "com.apple.macl"] {
+            if snap.contains(attr) {
+                _ = runProcess("/usr/bin/xattr", ["-dr", attr, url.path])
+            }
         }
-        emit(.launched(opened))
+
+        // 실행 방법 (실측 검증 순):
+        // ① Terminal.app 위임 — AGO 같은 미인정 앱이 직접 열면 macOS 26이
+        //    "신뢰 없는 책임 프로세스"로 보고 차단하므로(실측 반복), 정품
+        //    Terminal.app의 자식 셸에서 열어 사용자 세션 책임 체인으로 우회.
+        //    최초 1회 "AGO가 터미널을 제어하려고 합니다" TCC 허용 필요.
+        // ② 직접 open — 가장 빠르지만 미인정 런처는 차단됨.
+        // ③ launchctl asuser — launchd 사용자 도메인 경유 예비책.
+        // 각 단계는 실제 프로세스 생존으로 판정한다.
+        let uid = runProcess("/usr/bin/id", ["-u"]).output.trimmingCharacters(in: .whitespacesAndNewlines)
+        let quoted = url.path.replacingOccurrences(of: "'", with: "'\\''")
+        // AppleScript: tell Terminal to do script — 셸 명령을 Terminal 자식에서 실행
+        let termScript = "tell application \"Terminal\" to do script \"xattr -dr com.apple.quarantine '\(quoted)' && open -g '\(quoted)' && exit\""
+        let attempts: [(String, [String], TimeInterval)] = [
+            ("/usr/bin/osascript", ["-e", termScript], 3.0),   // ① Terminal 위임 (검증됨)
+            ("/usr/bin/open", ["-g", url.path], 1.8),           // ② 직접 open
+            ("/bin/launchctl", ["asuser", uid, "/usr/bin/open", "-g", url.path], 1.8), // ③ asuser
+        ]
+        for (prog, args, wait) in attempts {
+            guard launchAndAlive(prog: prog, args, match: url.path, wait: wait) else { continue }
+            if prog == "/usr/bin/osascript" {
+                DebugLogger.info(feature: "GATEOPEN", "Terminal 위임 실행 성공")
+            }
+            emitLog(.success, L10n.s("pipe.launched"))
+            emit(.launched(true))
+            return
+        }
+        emitLog(.failure, AppError.launchFailed(url.lastPathComponent).localizedDescription)
+        DebugLogger.error(code: AppError.launchFailed("").code, url.lastPathComponent)
+        emit(.launched(false))
+    }
+
+    // 실행 후 짧게 대기해 프로세스가 살아 있는지(Gatekeeper 살해 여부) 판정한다.
+    // Terminal 위임은 do script가 즉시 반환되므로 실제 open은 백그라운드에서
+    // LaunchServices → Gatekeeper 평가를 거쳐 뒤늦게 뜬다. wait 후 1회 확인,
+    // 실패 시 1.5초 간격 최대 3회 재시도해 false negative를 줄인다 (실측 17:50
+    // 관측: 앱은 떴으나 3초 1회 판정만으로는 miss → 전체 실패로 오판).
+    private func launchAndAlive(prog: String, _ args: [String], match: String, wait: TimeInterval = 1.8) -> Bool {
+        let (rc, out) = runProcess(prog, args)
+        _ = out
+        DebugLogger.info(feature: "GATEOPEN", "\(prog) rc=\(rc)")
+        guard rc == 0 else { return false }
+        Thread.sleep(forTimeInterval: wait)
+        for attempt in 0..<4 {
+            // macOS 26: /bin/pgrep 없음 — /usr/bin/pgrep. 경로 오류면 runProcess가
+            // 파일 미존재로 예외를 반환해 생존 판정이 항상 false가 된다 (실측 17:50
+            // 관측: 앱은 떴으나 "실패"로 오판된 원인).
+            let (alive, _) = runProcess("/usr/bin/pgrep", ["-f", match])
+            if alive == 0 {
+                if attempt > 0 {
+                    DebugLogger.info(feature: "GATEOPEN", "생존 확인 \(attempt)회 재시도 후 성공")
+                }
+                return true
+            }
+            if attempt < 3 { Thread.sleep(forTimeInterval: 1.5) }
+        }
+        DebugLogger.info(feature: "GATEOPEN", "생존 확인 실패 (\(prog))")
+        return false
     }
 
     // MARK: - 내부 유틸
