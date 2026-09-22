@@ -42,16 +42,16 @@ jobs:
           STAGING="$(mktemp -d)"
           cp -R "$APP_PATH" "$STAGING/"
           ln -s /Applications "$STAGING/Applications"
+          # 파일명은 태그에서 v 제거 → 로컬 package(AGO-0.2.2-macos.dmg)와 일치
+          VERSION="${GITHUB_REF_NAME#v}"
+          DMG="AGO-${VERSION}-macos.dmg"
           hdiutil create -volname "AGO ${GITHUB_REF_NAME}" \
-            -srcfolder "$STAGING" -ov -format UDZO \
-            "AGO-${GITHUB_REF_NAME}-macos.dmg"
+            -srcfolder "$STAGING" -ov -format UDZO "$DMG"
           # release-notes/<tag>.md가 있으면 그것을 본문으로, 없으면 자동 생성
           if [ -f "release-notes/${GITHUB_REF_NAME}.md" ]; then
             gh release create "$GITHUB_REF_NAME" --title "AGO $GITHUB_REF_NAME" \
-              --notes-file "release-notes/${GITHUB_REF_NAME}.md" \
-              "AGO-${GITHUB_REF_NAME}-macos.dmg"
+              --notes-file "release-notes/${GITHUB_REF_NAME}.md" "$DMG"
           else
             gh release create "$GITHUB_REF_NAME" --title "AGO $GITHUB_REF_NAME" \
-              --generate-notes \
-              "AGO-${GITHUB_REF_NAME}-macos.dmg"
+              --generate-notes "$DMG"
           fi

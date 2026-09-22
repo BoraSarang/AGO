@@ -48,10 +48,9 @@
 
 ## 설치
 
-1. [Releases](https://github.com/BoraSarang/AGO/releases)에서 `AGO-<버전>-macos.zip` 다운로드
-2. 압축 해제 후 `AGO.app`을 `/Applications`에 복사
-3. 첫 실행 시 차단 경고가 뜨면: `xattr -dr com.apple.quarantine ~/Downloads/AGO-*.zip` 후 압축 해제
-   (서명 없는 배포판이라 macOS가 한 번 차단합니다)
+1. [Releases](https://github.com/BoraSarang/AGO/releases)에서 `AGO-<버전>-macos.dmg` 다운로드
+2. DMG를 열고 `AGO.app`을 `/Applications`로 드래그
+3. 첫 실행 시 차단 경고가 뜨면 **우클릭 → 열기** (한 번만 하면 됩니다 — ad-hoc 서명 배포판이라 macOS가 한 번 차단합니다)
 
 ## 소스에서 빌드
 
@@ -61,7 +60,7 @@
 xcodegen generate
 ./build_and_run.sh build macos   # → ~/Applications/AGO.app 배치
 ./build_and_run.sh test macos unit
-./build_and_run.sh package macos # → dist/AGO-<버전>-macos.zip (VERSION=0.2.0 지정 가능)
+./build_and_run.sh package macos # → dist/AGO-<버전>-macos.dmg (VERSION=0.2.2 지정 가능)
 ```
 
 > `Sources/AGO/Info.plist`는 xcodegen 생성물입니다. 직접 수정하지 마세요. 키는 `project.yml` > `info.properties`에 선언합니다.

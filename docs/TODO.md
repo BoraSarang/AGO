@@ -2,9 +2,9 @@
 
 > **프로젝트**: AGO (Automatic Gate Opener)
 > **플랫폼**: macOS
-> **버전**: v1.0 완료 → v1.1 진행 중 (서명 단계)
-> **최종 갱신**: 2026-09-18
-> **기준 문서**: `docs/plans/PLAN_v1.0_macos.md` + `docs/plans/PLAN_v1.1_macos.md`
+> **버전**: v0.2.2 릴리스 완료 (업데이트 확인 + DMG 파이프라인)
+> **최종 갱신**: 2026-09-22
+> **기준 문서**: `docs/plans/PLAN_v1.0_macos.md` + `docs/plans/PLAN_v1.1_macos.md` + `docs/CHANGELOG.md`
 
 ---
 
@@ -35,6 +35,12 @@
 - [x] T-AGO-23: 미등록자 유도 시트 (Xcode 열기 + 다시 확인)
 - [x] T-AGO-24: 5단계 타임라인 UI + 한/영 문자열 parity (19키)
 - [x] T-AGO-25: 정책 문서 개정 (PLAN/도움말/README/사이트) + 실전 검증 (PageKit·60Seconds / steam_api.bundle 사례) + CHANGELOG + session 로그
+
+### M4: 업데이트 확인 + DMG 릴리스 ✅ (v0.2.2 — 2026-09-22 완료)
+- [x] T-AGO-29: 업데이트 확인 (`ReleaseChecker` + `UpdateModel` 주기/영속화 + 오렌지 배지/시트/도움말 확인 행, 테스트 12종)
+- [x] T-AGO-30: 릴리스 파이프라인 (`.github/workflows/release.yml` 태그→테스트→Release→ad-hoc→DMG→gh release, `build_and_run.sh package` DMG 전환)
+- [x] 실행 위임: 정품 Terminal 경유 launch (macOS 26 Gatekeeper provenance 대응) + `/usr/bin/pgrep` 재시도
+- [x] Release `v0.2.2` 발행 완료 (DMG 에셋, CI 35/35)
 
 ---
 
