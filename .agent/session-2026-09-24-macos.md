@@ -31,3 +31,13 @@
 21. **검증**: 첫 실행 로그 `[도움말] 첫 실행 — 도움말 자동 표시` + 시트 표시 확인. 테스트 49/49 통과(E2E 마운트 경합 1회 타임아웃 후 재실행). `build macos` 배포 `~/Applications/AGO.app`.
 22. **문서**: CHANGELOG v0.3.1 · TODO M6 · DESIGN §2 하단/드롭존/도움말 시트 · 본 세션 로그.
 23. **다음**: (선택) 커밋·푸시·v0.3.1 릴리스. 사용자 요청 대기.
+
+## 세션 D — v0.3.1 문서·랜딩·릴리스 (2026-09-24)
+- README·README.ko: 사용 방법·설치에 도움말 7섹션·첫실행 1회 표시 반영, VERSION 예시 0.3.1
+- site EN/KO: 버전 v0.1.0→v0.3.1, 사용법·메시지 표(Gatekeeper 거부 대응) 갱신
+- release-notes/v0.3.1.md 작성
+- PR #1 squash 머지 → main bb18ba1
+- CI fix: RealFileE2ETests 파일 부재 시 throw → `.enabled(if:)` 조건부 스킵 (63908f7)
+- 태그 v0.3.1 이동(6ddcfda) → Release 워크플로 success → **AGO v0.3.1 릴리스** (AGO-0.3.1-macos.dmg)
+- Pages 랜딩 자동 배포 success
+- 로컬 테스트 49/49 통과 (병렬 실행 시 DMG 마운트 경합 주의)
