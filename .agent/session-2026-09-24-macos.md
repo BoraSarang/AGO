@@ -7,3 +7,4 @@
 5. **E2E**: DMG 원본 ditto 사본으로 속성제거→codesign tampered→spctl 거부→blocked→open 실행 시퀀스 검증.
 6. **후속**: 확인 단계 멈춤 — `runProcess` wait/read 순서 데드락(xattr -lr 출력 78KB). read→wait 교체 후 재배포·36/36 통과.
 7. **다음**: (선택) 커밋·푸시 사용자 요청 대기.
+8. **릴리스**: 커밋 `6c166c6` main 푸시 → 태그 `v0.2.3` → Actions 전 단계 성공 → Release 발행 (DMG `AGO-0.2.3-macos.dmg`). PR은 main 직행으로 생략.
