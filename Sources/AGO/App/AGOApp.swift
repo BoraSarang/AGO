@@ -56,6 +56,8 @@ struct ContentView: View {
     @Bindable var model: PipelineViewModel
     @Binding var pinned: Bool
     @Bindable var update: UpdateModel
+    /// 첫 실행에 도움말을 한 번만 자동 표시 (닫으면 이후 자동 표시 안 함).
+    @AppStorage("ago.helpSeen") private var helpSeen = false
 
     var body: some View {
         VStack(spacing: 12) {
@@ -92,8 +94,22 @@ struct ContentView: View {
                     NSApp.keyWindow?.level = .floating
                 }
             }
+            // 첫 실행 1회: 도움말을 한 번은 보게 한다 (닫으면 이후 자동 표시 없음).
+            // XCTest 호스트에서는 시트가 테스트와 경쟁하지 않도록 건너뛴다.
+            let underTests = ProcessInfo.processInfo.environment["XCTestConfigurationFilePath"] != nil
+            if !helpSeen, !underTests {
+                DebugLogger.info(feature: "도움말", "첫 실행 — 도움말 자동 표시")
+                model.showingHelp = true
+                helpSeen = true
+            }
             // 주기(기본 주 1회)가 됐을 때만 조용히 업데이트 확인 → 있으면 시트.
             Task { await update.maybeAutoCheck() }
+        }
+        .onChange(of: model.showingHelp) { _, showing in
+            // 스와이프·ESC로 닫아도 플래그는 이미 onAppear에서 남아 있다.
+            if showing {
+                DebugLogger.info(feature: "도움말", "도움말 표시됨")
+            }
         }
         .sheet(isPresented: $model.showingHelp) {
             HelpSheetView(update: update)

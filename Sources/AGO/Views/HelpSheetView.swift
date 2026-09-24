@@ -3,6 +3,7 @@ import SwiftUI
 
 // [SYSTEM LANGUAGE LOCK] 응답과 추론은 모두 한국어
 // HelpSheetView — 도움말 시트 (T-AGO-15). ⌘/ 로 표시.
+// 본문 7섹션은 ScrollView 안, 업데이트 행·푸터는 바깥(고정) — 스크롤 없이 항상 노출.
 
 struct HelpSheetView: View {
     @Environment(\.dismiss) private var dismiss
@@ -18,17 +19,24 @@ struct HelpSheetView: View {
                 Button(L10n.s("help.close")) { dismiss() }
                     .keyboardShortcut(.escape, modifiers: [])
             }
+
             ScrollView {
                 VStack(alignment: .leading, spacing: 12) {
                     section(title: L10n.s("help.s1t"), body: L10n.s("help.s1b"))
                     section(title: L10n.s("help.s2t"), body: L10n.s("help.s2b"))
+                    section(title: L10n.s("help.s5t"), body: L10n.s("help.s5b"))
+                    section(title: L10n.s("help.s6t"), body: L10n.s("help.s6b"))
                     section(title: L10n.s("help.s3t"), body: L10n.s("help.s3b"))
                     section(title: L10n.s("help.s4t"), body: L10n.s("help.s4b"))
-                    Divider()
-                    updateRow
+                    section(title: L10n.s("help.s7t"), body: L10n.s("help.s7b"))
                 }
+                .frame(maxWidth: .infinity, alignment: .leading)
             }
+
             Divider()
+            updateRow
+            Divider()
+
             HStack(spacing: 4) {
                 Text(L10n.s("help.madeBy"))
                 Text("·")
@@ -46,7 +54,7 @@ struct HelpSheetView: View {
             .buttonStyle(.link)
         }
         .padding(20)
-        .frame(width: 420, height: 380)
+        .frame(width: 480, height: 560)
         .onAppear {
             DebugLogger.info(feature: "도움말", "도움말 시트 표시")
         }
@@ -63,7 +71,7 @@ struct HelpSheetView: View {
         }
     }
 
-    /// 업데이트 확인 행 — 확인 버튼 + 상태 + 주기 선택 (가이드 설정 행 대응).
+    /// 업데이트 확인 행 — ScrollView 밖 고정. 확인 버튼 + 상태 + 주기 선택.
     private var updateRow: some View {
         HStack(spacing: 8) {
             Button(L10n.s("update.check")) {

@@ -50,7 +50,7 @@ final class PipelineViewModel {
         showingSignHelp = false
         signIdentityInput = ""
         do {
-            try AppInspector.validateAppBundle(url: url)
+            try AppInspector.validateDrop(url: url)
         } catch {
             appURL = nil
             let message = error.localizedDescription
@@ -166,6 +166,10 @@ final class PipelineViewModel {
                 showingSignConfirm = true
                 DebugLogger.info(feature: "서명확인", "서명 확인 다이얼로그 표시")
             }
+        case .target(let target):
+            // DMG 추출 후 내부 .app 경로로 갱신 (실행·버전 미리보기 대상).
+            appURL = target
+            DebugLogger.info(feature: "파일검사", "작업 대상 확정: \(target.lastPathComponent)")
         }
     }
 

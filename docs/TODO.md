@@ -2,7 +2,7 @@
 
 > **프로젝트**: AGO (Automatic Gate Opener)
 > **플랫폼**: macOS
-> **버전**: v0.2.3 (spctl 거부 → blocked 경고 게이트 + 재귀 xattr)
+> **버전**: v0.3.1 (도움말 UX 강화 완료)
 > **최종 갱신**: 2026-09-24
 > **기준 문서**: `docs/plans/PLAN_v1.0_macos.md` + `docs/plans/PLAN_v1.1_macos.md` + `docs/CHANGELOG.md`
 
@@ -51,7 +51,33 @@
 ---
 
 ## 📝 비고
-- `.dmg` 처리는 v1 범위 밖 (v1.1 이후 검토)
 - 강제 재서명(`codesign --force --sign -`) 기능 없음 — 보안 정책
 - sudo 자동 승격 없음
 - bd 연동 시: `bd create --title "..." --label macos --label ago`
+
+---
+
+## 🚧 진행 중 (In Progress)
+
+### M5: DMG·PKG 지원 (v0.3.0 — 2026-09-24)
+- [x] `AppInspector`: `DropKind`(app/dmg/pkg) + `validateDrop` + `parsePkgSignature`
+- [x] `AppError.unsupportedFormat` / `dmgMountFailed` (E-MAC-VAL-2002 재사용 / E-MAC-PERM-2006)
+- [x] `GatePipeline`: `runInspect` 분기 — `runAppInspect` (기존) / `runDmgInspect` (마운트→앱/PKG 폴백 추출) / `runPkgInspect` (pkgutil+spctl -t install)
+- [x] `findAppBundle` 4단계 재귀 + `findPkg` (GOG 설치 DMG: `.app` 없고 `.pkg`만 있는 케이스 폴백)
+- [x] `PipelineEvent.target(URL)` — DMG 추출 후 내부 .app/.pkg 경로 UI 갱신
+- [x] `DropZoneView`: `.applicationBundle`+`.diskImage`+`.package` 수락, 아이콘 종류 구분
+- [x] L10n: `pipe.dmg*`/`pipe.pkg*`/`err.dmg`/`err.notapp`/help 갱신 (ko/en 135키 parity)
+- [x] 테스트 + 빌드 + 실전 E2E 3종 완료 — **전체 49/49 통과 (31.2초)**
+  - 작은 DMG (train_valley GOG): PKG 폴백 → GOG 서명 → blocked (9.6초)
+  - 큰 DMG (RoB 4.5G): RoB.app 추출 → 3속성 제거 → blocked (20.8초)
+  - 샘플 PKG: GOG 서명 → blocked (0.8초)
+- [x] README/CHANGELOG/사이트 범위 문구 동기화 (README.ko·en, site ko·en, error_message_ko)
+- [x] E2E 임시 마운트 정리 확인 (잔존 볼륨 없음)
+
+### M6: 도움말 UX (v0.3.1 — 2026-09-24)
+- [x] HelpSheetView 7섹션 재구성 + 시트 480×560
+- [x] 업데이트 확인 행 ScrollView 밖 하단 고정
+- [x] 첫 실행 1회 도움말 자동 표시 (`ago.helpSeen`, XCTest 스킵)
+- [x] 빈 상태 드롭존 `도움말 보기 ⌘/` 링크
+- [x] L10n help 6키 + drop 2키 — ko/en 143키 parity
+- [x] 테스트 49/49 + 빌드 배포 + CHANGELOG/DESIGN/session 기록

@@ -1,8 +1,15 @@
 import Foundation
 
 // [SYSTEM LANGUAGE LOCK] 응답과 추론은 모두 한국어
-// AppInspector — .app 형식 검사 + xattr/codesign/spctl 결과 파싱 (T-AGO-11)
+// AppInspector — .app/.dmg/.pkg 형식 검사 + xattr/codesign/spctl/pkgutil 결과 파싱
 // 순수 함수 위주라 단위 테스트가 쉽다. 실제 명령 실행은 GatePipeline 담당.
+
+/// 드롭 가능한 번들 종류.
+enum DropKind: String, Equatable, Sendable {
+    case app
+    case dmg
+    case pkg
+}
 
 /// `codesign --verify` 결과.
 enum CodesignResult: Equatable, Sendable {
@@ -20,23 +27,57 @@ enum SpctlResult: Equatable, Sendable {
     case rejected(String)
 }
 
-enum AppInspector {
-    // MARK: - 형식 검사 (PLAN 2.2 단계 1)
+/// `pkgutil --check-signature` 결과.
+enum PkgSignatureResult: Equatable, Sendable {
+    /// Developer ID 등 유효 서명. 연관값 = 요약(인증서 이름 등).
+    case signed(String)
+    /// 서명 없음.
+    case unsigned
+    /// 서명 무효/깨짐. 연관값 = 원문 요약.
+    case invalid(String)
+}
 
-    /// `.app` 확장자 + 번들 구조(`Contents/Info.plist`) 확인.
-    /// - Throws: `AppError.notAnAppBundle`
-    static func validateAppBundle(url: URL) throws {
-        guard url.pathExtension == "app" else {
-            throw AppError.notAnAppBundle(url.lastPathComponent)
+enum AppInspector {
+    // MARK: - 형식 검사 (app / dmg / pkg)
+
+    /// 지원 확장자 → DropKind. 미지원이면 nil.
+    static func dropKind(url: URL) -> DropKind? {
+        switch url.pathExtension.lowercased() {
+        case "app": return .app
+        case "dmg": return .dmg
+        case "pkg": return .pkg
+        default: return nil
         }
-        let infoPlist = url.appendingPathComponent("Contents/Info.plist")
-        guard FileManager.default.fileExists(atPath: infoPlist.path) else {
-            throw AppError.notAnAppBundle(url.lastPathComponent)
+    }
+
+    /// 드롭/선택 경로 형식 검사.
+    /// - `.app`: 번들 구조(`Contents/Info.plist`)
+    /// - `.dmg`/`.pkg`: 파일 존재만 확인 (내부 구조는 마운트·설치 단계에서)
+    static func validateDrop(url: URL) throws {
+        guard let kind = dropKind(url: url) else {
+            throw AppError.unsupportedFormat(url.lastPathComponent)
+        }
+        guard FileManager.default.fileExists(atPath: url.path) else {
+            throw AppError.unsupportedFormat(url.lastPathComponent)
+        }
+        if kind == .app {
+            let infoPlist = url.appendingPathComponent("Contents/Info.plist")
+            guard FileManager.default.fileExists(atPath: infoPlist.path) else {
+                throw AppError.unsupportedFormat(url.lastPathComponent)
+            }
         }
         DebugLogger.info(feature: "GATEOPEN", L10n.f("pipe.formatOK", url.lastPathComponent))
     }
 
-    // MARK: - xattr 파싱 (PLAN 2.2 단계 2)
+    /// `.app` 전용 검사 (기존 호출부 호환).
+    static func validateAppBundle(url: URL) throws {
+        guard url.pathExtension.lowercased() == "app" else {
+            throw AppError.unsupportedFormat(url.lastPathComponent)
+        }
+        try validateDrop(url: url)
+    }
+
+    // MARK: - xattr 파싱
 
     /// `xattr -l` 출력에 quarantine 속성이 있는지 확인.
     static func hasQuarantine(xattrOutput: String) -> Bool {
@@ -189,9 +230,42 @@ enum AppInspector {
         codesignValid && (signed || !tamperEvidence)
     }
 
+    // MARK: - pkgutil 서명 파싱
+
+    /// `pkgutil --check-signature` 출력 파싱.
+    static func parsePkgSignature(output: String, exitCode: Int32) -> PkgSignatureResult {
+        let lines = output
+            .components(separatedBy: .newlines)
+            .map { $0.trimmingCharacters(in: .whitespaces) }
+            .filter { !$0.isEmpty }
+        let lower = lines.map { $0.lowercased() }
+        if lower.contains(where: { $0.contains("no signature") || $0.contains("not signed") }) {
+            return .unsigned
+        }
+        if lower.contains(where: { $0.contains("status: signed") || $0.contains("developer id installer") || $0.contains("certificate") && $0.contains("signed") }) {
+            // 인증서 체인에서 첫 번째 발급자 라인을 요약으로 사용 (`1. ` 순번 제거).
+            let cert = lines.first { $0.contains("Developer ID") || $0.contains("Apple Development") || $0.contains("PackageKit") }
+                ?? lines.first { $0.contains("Status:") } ?? "signed"
+            let stripped = cert.replacingOccurrences(of: #"^\d+\.\s*"#, with: "", options: .regularExpression)
+            return .signed(stripped.isEmpty ? cert : stripped)
+        }
+        if exitCode != 0 {
+            let summary = lines.last ?? "signature check failed"
+            if summary.lowercased().contains("status: signed") {
+                return .signed(summary)
+            }
+            return .invalid(summary)
+        }
+        let summary = lines.first { $0.lowercased().contains("status") } ?? (lines.last ?? "signed")
+        if summary.lowercased().contains("signed") && !summary.lowercased().contains("not signed") {
+            return .signed(summary)
+        }
+        return .invalid(summary)
+    }
+
     // MARK: - spctl 파싱 (PLAN 2.2 단계 5)
 
-    /// `spctl -a -vv` 출력 파싱.
+    /// `spctl -a` 출력 파싱. `context`는 `open`(기본) 또는 `install`(pkg).
     static func parseSpctl(output: String, exitCode: Int32) -> SpctlResult {
         if exitCode == 0, output.contains("accepted") {
             return .accepted

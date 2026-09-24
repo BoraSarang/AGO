@@ -104,7 +104,140 @@ struct InspectorTests {
             Issue.record("번들 구조 없는 .app은 거부되어야 함")
         } catch let error as AppError {
             #expect(error.code == "E-MAC-VAL-2002")
+        } catch {
+            Issue.record("AppError가 아니면 안 됨: \(error)")
         }
+    }
+
+    @Test("dropKind — app/dmg/pkg/기타")
+    func dropKinds() {
+        #expect(AppInspector.dropKind(url: URL(fileURLWithPath: "/tmp/A.app")) == .app)
+        #expect(AppInspector.dropKind(url: URL(fileURLWithPath: "/tmp/b.DMG")) == .dmg)
+        #expect(AppInspector.dropKind(url: URL(fileURLWithPath: "/tmp/c.pkg")) == .pkg)
+        #expect(AppInspector.dropKind(url: URL(fileURLWithPath: "/tmp/d.zip")) == nil)
+    }
+
+    @Test("validateDrop — zip은 거부")
+    func validateDropRejectsZip() {
+        #expect(throws: AppError.self) {
+            try AppInspector.validateDrop(url: URL(fileURLWithPath: "/tmp/foo.zip"))
+        }
+        do {
+            try AppInspector.validateDrop(url: URL(fileURLWithPath: "/tmp/ghost.dmg"))
+            Issue.record("존재하지 않는 파일은 거부되어야 함")
+        } catch let error as AppError {
+            #expect(error.code == "E-MAC-VAL-2002")
+        } catch {
+            Issue.record("AppError가 아니면 안 됨: \(error)")
+        }
+    }
+
+    @Test("validateDrop — 존재하는 dmg 파일 통과")
+    func validateDropExistingDmg() throws {
+        let dmg = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AGOTest-\(UUID().uuidString).dmg")
+        FileManager.default.createFile(atPath: dmg.path, contents: Data([0]))
+        defer { try? FileManager.default.removeItem(at: dmg) }
+        try AppInspector.validateDrop(url: dmg)
+        let pkg = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AGOTest-\(UUID().uuidString).pkg")
+        FileManager.default.createFile(atPath: pkg.path, contents: Data([0]))
+        defer { try? FileManager.default.removeItem(at: pkg) }
+        try AppInspector.validateDrop(url: pkg)
+    }
+
+    @Test("pkgutil 서명 파싱 — 서명/미서명")
+    func parsePkgSignature() {
+        let signed = """
+        Package "x.pkg":
+           Status: signed by a developer certificate issued by Apple for distribution
+           Certificate Chain:
+             1. Developer ID Installer: Foo Bar (TEAMID)
+        """
+        #expect(AppInspector.parsePkgSignature(output: signed, exitCode: 0) == .signed("Developer ID Installer: Foo Bar (TEAMID)"))
+        let unsigned = "Package \"y.pkg\": no signature"
+        if case .unsigned = AppInspector.parsePkgSignature(output: unsigned, exitCode: 1) {
+            // ok
+        } else {
+            Issue.record("unsigned 판정이어야 함")
+        }
+    }
+
+    @Test("hdiutil plist 마운트 포인트 파싱")
+    func parseMountPoint() {
+        let real: [String: Any] = [
+            "system-entities": [
+                ["dev-entry": "/dev/disk4"],
+                ["mount-point": "/Volumes/MyGame"],
+            ],
+        ]
+        let data = try! PropertyListSerialization.data(fromPropertyList: real, format: .xml, options: 0)
+        let out = String(data: data, encoding: .utf8)!
+        #expect(GatePipeline.mountPoint(fromHdiutilPlist: out) == "/Volumes/MyGame")
+        #expect(GatePipeline.mountPoint(fromHdiutilPlist: "not plist") == nil)
+    }
+
+    @Test("findAppBundle — 루트 직속 앱")
+    func findAppBundleRoot() throws {
+        let vol = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AGOVol-\(UUID().uuidString)", isDirectory: true)
+        let app = vol.appendingPathComponent("Game.app")
+        try FileManager.default.createDirectory(at: app.appendingPathComponent("Contents"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: vol) }
+        #expect(Self.samePath(GatePipeline.findAppBundle(in: vol), app))
+    }
+
+    @Test("findAppBundle — 1단계 하위 폴더")
+    func findAppBundleNested() throws {
+        let vol = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AGOVol-\(UUID().uuidString)", isDirectory: true)
+        let games = vol.appendingPathComponent("Games", isDirectory: true)
+        let app = games.appendingPathComponent("Two.app")
+        try FileManager.default.createDirectory(at: app, withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: vol) }
+        #expect(Self.samePath(GatePipeline.findAppBundle(in: vol), app))
+    }
+
+    @Test("findAppBundle — 3단계 중첩 (Applications/Games/Deep)")
+    func findAppBundleDeepNested() throws {
+        let vol = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AGOVol-\(UUID().uuidString)", isDirectory: true)
+        let deep = vol.appendingPathComponent("Applications/Games/Deep", isDirectory: true)
+        let app = deep.appendingPathComponent("Deep.app")
+        try FileManager.default.createDirectory(at: app.appendingPathComponent("Contents"), withIntermediateDirectories: true)
+        defer { try? FileManager.default.removeItem(at: vol) }
+        #expect(Self.samePath(GatePipeline.findAppBundle(in: vol), app))
+    }
+
+    @Test("findPkg — 루트 직속 패키지 (GOG DMG 사례)")
+    func findPkgRoot() throws {
+        let vol = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AGOVol-\(UUID().uuidString)", isDirectory: true)
+        try FileManager.default.createDirectory(at: vol, withIntermediateDirectories: true)
+        let pkg = vol.appendingPathComponent("game_enUS.pkg")
+        FileManager.default.createFile(atPath: pkg.path, contents: Data([0]))
+        defer { try? FileManager.default.removeItem(at: vol) }
+        #expect(Self.samePath(GatePipeline.findPkg(in: vol), pkg))
+    }
+
+    @Test("findPkg — .app이 없을 때 폴백 대상, .app이 있으면 findAppBundle 우선")
+    func findPkgWithAppPresent() throws {
+        let vol = FileManager.default.temporaryDirectory
+            .appendingPathComponent("AGOVol-\(UUID().uuidString)", isDirectory: true)
+        let app = vol.appendingPathComponent("Game.app")
+        try FileManager.default.createDirectory(at: app.appendingPathComponent("Contents"), withIntermediateDirectories: true)
+        let pkg = vol.appendingPathComponent("extra.pkg")
+        FileManager.default.createFile(atPath: pkg.path, contents: Data([0]))
+        defer { try? FileManager.default.removeItem(at: vol) }
+        // 앱이 있으면 앱 우선 (runDmgInspect가 findAppBundle 먼저 호출)
+        #expect(Self.samePath(GatePipeline.findAppBundle(in: vol), app))
+        #expect(Self.samePath(GatePipeline.findPkg(in: vol), pkg))
+    }
+
+    /// /var↔/private/var 심볼릭 링크·끝 슬래시 차이를 무시한 경로 비교.
+    private static func samePath(_ a: URL?, _ b: URL) -> Bool {
+        guard let a else { return false }
+        return a.resolvingSymlinksInPath().path == b.resolvingSymlinksInPath().path
     }
 
     @Test("find-identity 신원 추출 (PageKit 사례)")

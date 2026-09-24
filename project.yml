@@ -23,7 +23,7 @@ targets:
         CFBundleDisplayName: AGO
         CFBundleName: AGO
         CFBundleIconFile: AppIcon
-        CFBundleShortVersionString: "0.2.3"
+        CFBundleShortVersionString: "0.3.1"
         CFBundleVersion: "1"
         LSHasLocalizedDisplayName: true
         LSApplicationCategoryType: public.app-category.utilities

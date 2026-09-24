@@ -28,6 +28,7 @@
 		F7AD9EE80518563F247E5D87 /* DebugLogger.swift in Sources */ = {isa = PBXBuildFile; fileRef = 41489FE115A4C05C354AE046 /* DebugLogger.swift */; };
 		FB93FAB754BE11E641E70882 /* Localizable.strings in Resources */ = {isa = PBXBuildFile; fileRef = F53634BBC75B58897680595F /* Localizable.strings */; };
 		FD6A811C89CC702011A3411C /* DropZoneView.swift in Sources */ = {isa = PBXBuildFile; fileRef = 56D35065D8A8A69BFE5438BA /* DropZoneView.swift */; };
+		FF12D23D066A3901C8713289 /* RealFileE2ETests.swift in Sources */ = {isa = PBXBuildFile; fileRef = 87EAA9374798D280B6A68BA6 /* RealFileE2ETests.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -56,6 +57,7 @@
 		72A2383FDAB181C66088B6AD /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/InfoPlist.strings; sourceTree = "<group>"; };
 		7F5043652F1FBC1F26F37D05 /* AGO.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = AGO.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		855D816848F777C8937202B3 /* HelpSheetView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = HelpSheetView.swift; sourceTree = "<group>"; };
+		87EAA9374798D280B6A68BA6 /* RealFileE2ETests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = RealFileE2ETests.swift; sourceTree = "<group>"; };
 		9134146FD2CDC440C03C84A0 /* ko */ = {isa = PBXFileReference; lastKnownFileType = text.plist.strings; name = ko; path = ko.lproj/Localizable.strings; sourceTree = "<group>"; };
 		9AD600A6E1CFDDD9CFF16644 /* ReleaseChecker.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ReleaseChecker.swift; sourceTree = "<group>"; };
 		B396F1543117545124EF438B /* TerminalLogView.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TerminalLogView.swift; sourceTree = "<group>"; };
@@ -152,6 +154,7 @@
 			isa = PBXGroup;
 			children = (
 				5FB2AFB043761F123C4C75F5 /* PipelineTests.swift */,
+				87EAA9374798D280B6A68BA6 /* RealFileE2ETests.swift */,
 				2CFDCA16A18E387343768FB3 /* UpdateTests.swift */,
 			);
 			name = AGOTests;
@@ -271,6 +274,7 @@
 			buildActionMask = 2147483647;
 			files = (
 				CA8E645CBFE54862A837FA40 /* PipelineTests.swift in Sources */,
+				FF12D23D066A3901C8713289 /* RealFileE2ETests.swift in Sources */,
 				0095AF5EABAD9ABE7404210E /* UpdateTests.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
