@@ -13,7 +13,7 @@ set -euo pipefail
 # ──────────────────────────────────────────────────────────────
 PROJECT_NAME="AGO"
 BUNDLE_ID="com.borasarang.ago"
-VERSION="${VERSION:-0.2.3}"
+VERSION="${VERSION:-0.3.1}"
 XCODE_PROJECT="${PROJECT_NAME}.xcodeproj"
 SCHEME="${PROJECT_NAME}"
 CONFIGURATION="Debug"

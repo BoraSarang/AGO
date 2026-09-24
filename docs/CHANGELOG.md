@@ -2,6 +2,39 @@
 
 > 모든 기록은 한국어. platform 태그 + error_code + perf 영향 포함.
 
+## [v0.3.1] - 2026-09-24 (macos) — 도움말 대폭 보강 + 첫 실행 1회 표시 + 업데이트 행 하단 고정
+- **도움말 시트 7섹션**: 기존 4(왜 필요한가요/사용 절차/경고의 의미/하지 않는 일) + 신규 3 — `help.s5t/s5b` 파일 형식별 처리(.app/.dmg/.pkg), `help.s6t/s6b` 준비됨과 경고(ready vs blocked·자동 실행 없음), `help.s7t/s7b` 자주 나오는 문제(권한·Gatekeeper·첫 실행 차단). 표시 순서: s1→s2→s5→s6→s3→s4→s7
+- **업데이트 행 하단 고정**: `updateRow`(확인 버튼·주기 피커)를 ScrollView 밖 Divider 사이로 이동 — 스크롤 없이 항상 노출. 기존 문제: 본문이 길어지면 업데이트 컨트롤이 아래로 밀림
+- 시트 크기 `420×380` → `480×560`
+- **첫 실행 1회 자동 표시**: `@AppStorage("ago.helpSeen")` — 최초 실행에 도움말 시트 자동 오픈, 닫으면 이후 자동 표시 안 함. XCTest 호스트(`XCTestConfigurationFilePath`)에서는 건너뜀
+- **빈 상태 드롭존 도움말 링크**: `파일 선택…` 옆 `도움말 보기 ⌘/` (`drop.helpLink`/`drop.helpLinkHelp`)
+- L10n: help 신규 6키(s5~s7 t/b) + drop 2키 — ko/en **143키 parity**
+- fix: ko `help.s7b` 내부 `"확인할 수 없습니다"` 따옴표 `\"` 이스케이프
+- 검증: 단위+E2E **49/49 통과** (7 suites), 빌드+배포 `~/Applications/AGO.app`
+- 문서: README·README.ko 사용 방법·설치에 도움말 반영, site EN/KO 랜딩 버전 v0.1.0→v0.3.1·사용법·메시지 표 갱신, `release-notes/v0.3.1.md` 작성
+
+## [v0.3.0] - 2026-09-24 (macos) — .dmg / .pkg 지원 (M5)
+- `AppInspector`: `DropKind`(app/dmg/pkg) 신설 + `validateDrop`로 `.app`/`.dmg`/`.pkg` 형식 검사. `.app` 전용 `validateAppBundle`은 호환용 유지
+- `parsePkgSignature`: `pkgutil --check-signature` 출력 파싱 (signed / unsigned / invalid)
+- `AppError.unsupportedFormat` (E-MAC-VAL-2002 재사용) + `dmgMountFailed` (E-MAC-PERM-2006 신설) + `err.dmg` 한/영 키
+- `GatePipeline.runInspect` 분기:
+  - `.app` → 기존 `runAppInspect` (조회→제거→검증→서명→평가 그대로)
+  - `.dmg` → 격리 해제 → `hdiutil attach -plist` 마운트 → 내부 `.app` 검출 → 없으면 `.pkg` 폴백(GOG 설치 DMG) → `ditto`로 임시 위치 추출(읽기 전용 볼륨) → `runAppInspect`/`runPkgInspect` 연결. `defer`로 항상 `hdiutil detach -force`
+  - `.pkg` → 격리 해제 → `pkgutil --check-signature` + `spctl -a -vv -t install` → 설치 패키지는 서명 단계 스킵 → 통과=ready / 거부=blocked 경고 게이트 → `open`(설치기)
+- `findAppBundle` 제한 깊이 재귀 탐색 (최대 4단계, `.app` 내부는 불파) + `findPkg` 신규 (`.app` 없을 때 PKG 폴백)
+- `PipelineEvent.target(URL)` 신설 — DMG 추출 후 내부 `.app`/`.pkg` 경로로 `appURL` 갱신 (실행·버전 미리보기 대상)
+- `PipelineViewModel.inspect`가 `validateDrop` 사용 + `.target` 이벤트 처리
+- `DropZoneView`: NSOpenPanel이 `.applicationBundle`/`.diskImage`/`.package` + 디렉터리 수락, 빈 상태 아이콘을 종류별 SF 심볼로 구분
+- L10n: `pipe.dmgMount/Mounted/Detached/FoundApp/FoundPkg/Extracted/ExtractedPkg/NoAppOrPkg/CopyFail`, `pipe.pkgSigned/Unsigned/SignFail/NoSign`, `err.dmg`, `err.notapp`, `drop.*`, `help.s1b/s2b/s4b` 갱신 — ko/en 135키 parity
+- 테스트 신규: dropKind 4종, validateDrop zip 거부·dmg/pkg 통과, pkgutil 파싱, hdiutil plist 마운트 포인트, findAppBundle 루트/중첩/3단계, findPkg 루트/앱 공존 — 단위 46종 통과
+- 실전 E2E 스위트 `RealFileE2ETests`: Downloads 파일 있을 때만 실행 — **전체 49/49 통과 (7 suites, 31.2초)**
+  - 작은 DMG (train_valley, GOG): 마운트 → `.app` 없음 → `.pkg` 폴백 → `dlc_..._bulletin.pkg` 추출 → GOG Developer ID 서명 확인 → spctl rejected → **blocked** (9.6초)
+  - 큰 DMG (RoB 4.5G): 마운트 → `RoB.app` 검출 → ditto 추출 → quarantine/provenance/macl 제거 → 변조 1개 감지 → 서명 스킵 → spctl rejected → **blocked** (20.8초)
+  - 샘플 PKG: GOG 서명 → spctl rejected → **blocked** (0.8초)
+- 문서: README.ko·en 사용 방법·보안 정책(“.dmg 처리 없음” 제거), site ko·en 문구 동기화, error_message_ko.json + E-MAC-PERM-2006, TODO M5, project.yml 버전 0.3.0
+- fix: `parsePkgSignature` 인증서 라인 `1. ` 순번 제거, `findAppBundle` 테스트는 `/var`↔`/private/var`·끝 슬래시 무시 경로 비교
+- E2E 대상: `train_valley_2_enUS_1_9_4_.dmg`, `Raiders.of.Blackveil.v2026.09.17.MacOS-U2B.dmg`, `dlc_train_valley_2___editor_s_bulletin_enUS_1_9_4_.pkg`
+
 ## [v0.2.3] - 2026-09-24 (macos) — spctl 거부 시 하드 차단 해제 + 재귀 xattr 검사 (RoB.app 실전)
 - 원인 규명 (Raiders of Blackveil / RoB.app): 중첩 `steam_api.bundle` 서명 불일치로 `codesign --verify` 실패 → 기본 서명 건너뛰기 → `spctl` 거부 → `spctlAllowGate`가 `codesignValid`를 요구해 **E-MAC-PERM-2003 하드 차단**(실행 버튼 없음). 실제 속성 제거만으로는 실행 가능했던 과잉 차단
 - 원인 2: 파이프라인이 `xattr -l`(비재귀)이라 루트에 provenance만 있고 중첩 파일(예: `PlugIns/.../libsteam_api.dylib`)에만 quarantine이 있으면 감지·제거에서 누락될 수 있음

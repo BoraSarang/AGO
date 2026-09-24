@@ -4,7 +4,7 @@ import UniformTypeIdentifiers
 
 // [SYSTEM LANGUAGE LOCK] 응답과 추론은 모두 한국어
 // DropZoneView — 히어로 드롭존 (T-AGO-12)
-// .app 드래그 수락 + NSOpenPanel 파일 선택 + 앱 아이콘·버전 미리보기.
+// .app / .dmg / .pkg 드래그 수락 + NSOpenPanel 파일 선택 + 아이콘·버전 미리보기.
 
 struct DropZoneView: View {
     @Bindable var model: PipelineViewModel
@@ -56,7 +56,7 @@ struct DropZoneView: View {
 
     private var emptyView: some View {
         VStack(spacing: 8) {
-            Image(systemName: "app.fill")
+            Image(systemName: iconName)
                 .font(.system(size: 40))
                 .foregroundStyle(.secondary)
             Text(L10n.s("drop.title"))
@@ -64,10 +64,29 @@ struct DropZoneView: View {
             Text(L10n.s("drop.subtitle"))
                 .font(.caption)
                 .foregroundStyle(.secondary)
-            Button(L10n.s("drop.choose")) { openPanel() }
-                .buttonStyle(.link)
+            HStack(spacing: 16) {
+                Button(L10n.s("drop.choose")) { openPanel() }
+                    .buttonStyle(.link)
+                Button(L10n.s("drop.helpLink")) { model.showingHelp = true }
+                    .buttonStyle(.link)
+                    .keyboardShortcut("/", modifiers: .command)
+                    .help(L10n.s("drop.helpLinkHelp"))
+            }
         }
         .padding()
+    }
+
+    /// 입력 중이면 종류에 맞는 SF 심볼.
+    private var iconName: String {
+        guard let url = model.appURL else { return "app.fill" }
+        switch AppInspector.dropKind(url: url) {
+        case .dmg:
+            return "internaldrive"
+        case .pkg:
+            return "shippingbox.fill"
+        case .app, nil:
+            return "app.fill"
+        }
     }
 
     // MARK: - 수락 상태
@@ -120,8 +139,8 @@ struct DropZoneView: View {
     private func openPanel() {
         DebugLogger.info(feature: "파일선택", "NSOpenPanel 열기")
         let panel = NSOpenPanel()
-        panel.allowedContentTypes = [.applicationBundle]
-        panel.canChooseFiles = false
+        panel.allowedContentTypes = [.applicationBundle, .diskImage, .package]
+        panel.canChooseFiles = true
         panel.canChooseDirectories = true
         panel.allowsMultipleSelection = false
         panel.message = L10n.s("drop.panelMessage")

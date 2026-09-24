@@ -4,7 +4,7 @@
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>AGO — Automatic Gate Opener for macOS</title>
-<meta name="description" content="A downloaded Mac app won't open? Drop the .app once: unquarantine, verify, launch. Tampered apps only run after your warning check.">
+<meta name="description" content="A downloaded Mac app, DMG, or PKG won't open? Drop it once: unquarantine, verify, launch. Tampered apps only run after your warning check.">
 <style>
   :root {
     --bg: #F4F4F6; --card: #FFFFFF; --ink: #16181D; --muted: #62666E;
@@ -93,10 +93,11 @@
   </header>
 
   <div class="hero">
-    <div class="eyebrow">macOS utility · v0.1.0</div>
+    <div class="eyebrow">macOS utility · v0.3.1</div>
     <h1>A downloaded app won't open?<br>Drop it once. That's it.</h1>
-    <p class="lede">AGO unquarantines the <code>.app</code>, verifies its signature, asks Gatekeeper —
-      and only launches when <em>you</em> press Run. Tampered apps stop at a red warning, never run silently.</p>
+    <p class="lede">AGO unquarantines the <code>.app</code>, <code>.dmg</code>, or <code>.pkg</code>, verifies its signature, asks Gatekeeper —
+      and only launches when <em>you</em> press Run. Tampered apps stop at a red warning, never run silently.
+      The Help sheet opens once on first launch so you always know what each state means.</p>
     <div class="cta-row">
       <a class="btn" href="https://github.com/BoraSarang/AGO/releases">Download for Mac</a>
       <a class="btn ghost" href="https://github.com/BoraSarang/AGO">GitHub</a>
@@ -104,8 +105,8 @@
     <p class="fine">Free · macOS 14+ · Apple silicon &amp; Intel · unsigned build (one manual unblock on first install)</p>
 
     <figure class="shot">
-      <img src="images/ago-hero-en.png" alt="AGO app window: drop zone, four-step pipeline timeline, activity log and Run button">
-      <figcaption>AGO 0.1.0 — drop zone, pipeline timeline, live log, Run button.</figcaption>
+      <img src="images/ago-hero-en.png" alt="AGO app window: drop zone, pipeline timeline, activity log and Run button">
+      <figcaption>AGO 0.3.1 — drop zone, pipeline timeline, live log, Run button. Help opens once on first launch.</figcaption>
     </figure>
   </div>
 
@@ -120,7 +121,7 @@
   <section>
     <h2>Use Cases</h2>
     <div class="grid">
-      <div class="card"><h3>No-DMG apps</h3><p>Open a plain <code>.app</code> that refuses to launch right after downloading or unzipping.</p></div>
+      <div class="card"><h3>DMG, PKG, apps</h3><p>Open a <code>.dmg</code>, <code>.pkg</code>, or <code>.app</code> that refuses to launch right after downloading or unzipping.</p></div>
       <div class="card"><h3>It's the flag, not damage</h3><p>Quickly clear cases where quarantine — not corruption — is the blocker.</p></div>
       <div class="card"><h3>Warning, then it's your call</h3><p>Broken signatures surface as a red card with the exact files. The call is yours.</p></div>
     </div>
@@ -129,8 +130,8 @@
   <section>
     <h2>Usage</h2>
     <ol class="steps">
-      <li><strong>Drop the .app</strong><p>Drag it onto the window, or press <code>⌘O</code> to pick a file.</p></li>
-      <li><strong>Watch it inspect itself</strong><p>Inspect → unquarantine → verify → assess, all automatic with a live log.</p></li>
+      <li><strong>Drop the .app / .dmg / .pkg</strong><p>Drag it onto the window, or press <code>⌘O</code> to pick a file. On first launch the Help sheet opens once (seven sections) — close it and it stays closed; reopen with <code>⌘/</code>.</p></li>
+      <li><strong>Watch it inspect itself</strong><p>Inspect → unquarantine → verify → assess, all automatic with a live log. A <code>.dmg</code> hands off to its inner app (or installer package); a <code>.pkg</code> stops before opening the installer.</p></li>
       <li><strong>Press Run yourself</strong><p>The button enables only on pass — or after you tick the warning checkbox. Never auto-launches.</p></li>
     </ol>
   </section>
@@ -146,7 +147,7 @@
         <tr><td><span class="tag warn">warning</span><br>tampering suspected</td><td>Files don't match the signature (e.g. injected dylib).</td><td>Read the red card. Reinstall from the official source — or tick the checkbox and run at your own risk.</td></tr>
         <tr><td><span class="tag warn">warning</span><br>development signature</td><td>Dev-certificate build, not for distribution. Not malware.</td><td>Check the card, tick the checkbox, run.</td></tr>
         <tr><td><span class="tag warn">warning</span><br>signing identity found</td><td>App signed with your own developer identity.</td><td>Gatekeeper is still assessed separately. Check the card, tick the checkbox, run.</td></tr>
-        <tr><td><span class="tag stop">blocked</span><br>Gatekeeper refused</td><td>Failed assessment <em>with</em> tampering evidence.</td><td>Warning card + checkbox after stamp cleanup — acknowledge, then run.</td></tr>
+        <tr><td><span class="tag stop">blocked</span><br>Gatekeeper refused</td><td>Failed assessment <em>with</em> tampering evidence.</td><td>Warning card + checkbox after stamp cleanup — acknowledge, tick, then run (Terminal delegate).</td></tr>
         <tr><td><span class="tag stop">failed</span><br>couldn't remove quarantine</td><td>Permission problem, usually inside <code>/Applications</code>.</td><td>Move the app (e.g. to <code>~/Downloads</code>) and retry.</td></tr>
       </tbody>
     </table>
@@ -164,7 +165,7 @@
         <li>Developer identity signing only after your confirmation.</li>
         <li>No automatic <code>sudo</code> escalation.</li>
         <li>No launching without your confirmation.</li>
-        <li>No <code>.dmg</code> handling (out of scope for v1).</li>
+        <li>A <code>.pkg</code> is only opened in the installer — never re-signed.</li>
       </ul>
     </div>
   </section>

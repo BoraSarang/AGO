@@ -64,6 +64,8 @@ enum PipelineEvent: Sendable {
     case launched(Bool)
     /// 서명 확인 필요 (UI가 decideSign으로 응답할 때까지 파이프라인 일시 정지).
     case signPrompt(SignPrompt)
+    /// 파이프라인이 실제 작업 대상을 확정할 때 (DMG → 내부 .app 추출 경로).
+    case target(URL)
 }
 
 // MARK: - 파이프라인
@@ -126,15 +128,35 @@ final class GatePipeline: @unchecked Sendable {
         emitLog(.command, L10n.f("pipe.start", url.path))
         DebugLogger.info(feature: "GATEOPEN", "검사 시작: \(url.lastPathComponent)")
 
-        // 단계 1: 형식 검사
+        // 단계 1: 형식 검사 (app / dmg / pkg)
         do {
-            try AppInspector.validateAppBundle(url: url)
+            try AppInspector.validateDrop(url: url)
         } catch {
             finishWithError(code: (error as? AppError)?.code ?? "E-MAC-VAL-2002",
                             message: error.localizedDescription,
                             at: .inspecting)
             return
         }
+        guard checkCancelled() else { return }
+
+        switch AppInspector.dropKind(url: url) {
+        case .dmg:
+            runDmgInspect(dmgURL: url)
+        case .pkg:
+            runPkgInspect(pkgURL: url)
+        case .app:
+            runAppInspect(appURL: url)
+        case nil:
+            finishWithError(code: AppError.unsupportedFormat(url.lastPathComponent).code,
+                            message: AppError.unsupportedFormat(url.lastPathComponent).localizedDescription,
+                            at: .inspecting)
+        }
+    }
+
+    // MARK: - .app 파이프라인 (기존 단계 유지)
+
+    private func runAppInspect(appURL url: URL) {
+        emit(.target(url))
 
         // 단계 2: 조회 (ls + xattr 재귀)
         // -l(비재귀)은 루트 노드만 보므로 중첩 파일의 quarantine을 놓친다
@@ -314,6 +336,210 @@ final class GatePipeline: @unchecked Sendable {
         DebugLogger.info(feature: "GATEOPEN", "검사 완료")
     }
 
+    // MARK: - .dmg 파이프라인 (마운트 → 내부 .app 추출 → 기존 app 파이프라인 연결)
+
+    /// DMG 격리 해제 → 마운트 → 내부 .app 검출 → 임시 위치로 복사 → app 파이프라인 연결.
+    private func runDmgInspect(dmgURL: URL) {
+        emitLog(.output, L10n.s("pipe.dmgMount"))
+        DebugLogger.info(feature: "GATEOPEN", "DMG 마운트 시작: \(dmgURL.lastPathComponent)")
+
+        // DMG 파일 자체의 격리 스탬프를 먼저 정리한다 (마운트 중 내용물 전파 방지).
+        emit(.phase(.cleaning))
+        let stampAttrs = ["com.apple.quarantine", "com.apple.provenance", "com.apple.macl"]
+        for attr in stampAttrs {
+            let snap = runProcess("/usr/bin/xattr", ["-l", dmgURL.path]).output
+            guard snap.contains(attr) else { continue }
+            emitLog(.command, "$ xattr -dr \(attr) \"\(dmgURL.path)\"")
+            let removed = runProcess("/usr/bin/xattr", ["-dr", attr, dmgURL.path])
+            emitOutput(removed.output)
+            guard checkCancelled() else { return }
+            if removed.exitCode == 0 {
+                emitLog(.success, L10n.s("pipe.removed"))
+            }
+        }
+        guard checkCancelled() else { return }
+
+        // 마운트 (읽기 전용 + 숨김 볼륨)
+        emit(.phase(.inspecting))
+        emitLog(.command, "$ hdiutil attach -nobrowse -readonly \"\(dmgURL.path)\"")
+        let attach = runProcess("/usr/bin/hdiutil",
+                                ["attach", "-nobrowse", "-readonly", "-plist", dmgURL.path])
+        guard checkCancelled() else { return }
+        guard attach.exitCode == 0,
+              let mountPoint = Self.mountPoint(fromHdiutilPlist: attach.output) else {
+            finishWithError(code: AppError.dmgMountFailed(dmgURL.lastPathComponent).code,
+                            message: AppError.dmgMountFailed(dmgURL.lastPathComponent).localizedDescription,
+                            at: .inspecting)
+            return
+        }
+        emitLog(.success, L10n.f("pipe.dmgMounted", mountPoint))
+        DebugLogger.info(feature: "GATEOPEN", "DMG 마운트 성공: \(mountPoint)")
+
+        defer {
+            emitLog(.command, "$ hdiutil detach \"\(mountPoint)\"")
+            let detach = runProcess("/usr/bin/hdiutil", ["detach", mountPoint, "-force"])
+            if detach.exitCode == 0 {
+                emitLog(.success, L10n.s("pipe.dmgDetached"))
+            }
+            DebugLogger.info(feature: "GATEOPEN", "DMG 분리: \(detach.exitCode == 0 ? "성공" : "실패")")
+        }
+
+        // 내부 .app 검출 시도 → 없으면 .pkg 검출 (GOG류 설치 DMG)
+        if let appURL = Self.findAppBundle(in: URL(fileURLWithPath: mountPoint)) {
+            emitLog(.output, L10n.f("pipe.dmgFoundApp", appURL.lastPathComponent))
+            DebugLogger.info(feature: "GATEOPEN", "DMG 내부 앱 발견: \(appURL.lastPathComponent)")
+
+            // 임시 위치로 복사 (DMG는 읽기 전용이라 xattr 제거가 불가능)
+            let tempDir = FileManager.default.temporaryDirectory
+                .appendingPathComponent("AGO-dmg", isDirectory: true)
+            try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            let dest = tempDir
+                .appendingPathComponent("\(appURL.deletingPathExtension().lastPathComponent)-\(UUID().uuidString.prefix(8)).app")
+            emitLog(.command, "$ ditto \"\(appURL.path)\" \"\(dest.path)\"")
+            let copy = runProcess("/usr/bin/ditto", [appURL.path, dest.path])
+            guard checkCancelled() else { return }
+            guard copy.exitCode == 0 else {
+                finishWithError(code: AppError.dmgMountFailed(dmgURL.lastPathComponent).code,
+                                message: L10n.s("pipe.dmgCopyFail"),
+                                at: .inspecting)
+                return
+            }
+            emitLog(.success, L10n.f("pipe.dmgExtracted", dest.lastPathComponent))
+            DebugLogger.info(feature: "GATEOPEN", "DMG 앱 추출 완료: \(dest.path)")
+
+            emit(.target(dest))
+            runAppInspect(appURL: dest)
+            return
+        }
+
+        // .app이 없으면 .pkg 폴백 (GOG 설치 DMG: 루트에 PKG만 있는 경우)
+        if let pkgURL = Self.findPkg(in: URL(fileURLWithPath: mountPoint)) {
+            emitLog(.output, L10n.f("pipe.dmgFoundPkg", pkgURL.lastPathComponent))
+            DebugLogger.info(feature: "GATEOPEN", "DMG 내부 패키지 발견: \(pkgURL.lastPathComponent)")
+
+            // 임시 위치로 복사 후 PKG 파이프라인 연결
+            let tempDir = FileManager.default.temporaryDirectory
+                .appendingPathComponent("AGO-dmg", isDirectory: true)
+            try? FileManager.default.createDirectory(at: tempDir, withIntermediateDirectories: true)
+            let dest = tempDir
+                .appendingPathComponent("\(pkgURL.lastPathComponent)-\(UUID().uuidString.prefix(8)).pkg")
+            emitLog(.command, "$ ditto \"\(pkgURL.path)\" \"\(dest.path)\"")
+            let copy = runProcess("/usr/bin/ditto", [pkgURL.path, dest.path])
+            guard checkCancelled() else { return }
+            guard copy.exitCode == 0 else {
+                finishWithError(code: AppError.dmgMountFailed(dmgURL.lastPathComponent).code,
+                                message: L10n.s("pipe.dmgCopyFail"),
+                                at: .inspecting)
+                return
+            }
+            emitLog(.success, L10n.f("pipe.dmgExtractedPkg", dest.lastPathComponent))
+            DebugLogger.info(feature: "GATEOPEN", "DMG 패키지 추출 완료: \(dest.path)")
+
+            emit(.target(dest))
+            runPkgInspect(pkgURL: dest)
+            return
+        }
+
+        finishWithError(code: AppError.unsupportedFormat(dmgURL.lastPathComponent).code,
+                        message: L10n.s("pipe.dmgNoAppOrPkg"),
+                        at: .inspecting)
+    }
+
+    // MARK: - .pkg 파이프라인 (격리 해제 → 서명 검사 → 설치기 열기)
+
+    /// PKG 격리 해제 → pkgutil/spctl 검사 → open(설치기). 개발자 재서명 없음.
+    private func runPkgInspect(pkgURL: URL) {
+        var verdict = PipelineVerdict()
+
+        // 격리 스탬프 정리 (설치 시 Gatekeeper 평가 방지용)
+        emit(.phase(.cleaning))
+        let stampAttrs = [
+            ("com.apple.quarantine", "pipe.removed"),
+            ("com.apple.provenance", "pipe.provenanceRemoved"),
+            ("com.apple.macl", "pipe.maclRemoved"),
+        ]
+        var anyStamp = false
+        for (attr, successKey) in stampAttrs {
+            let snap = runProcess("/usr/bin/xattr", ["-l", pkgURL.path]).output
+            guard snap.contains(attr) else { continue }
+            anyStamp = true
+            if attr == "com.apple.provenance" { verdict.hadProvenance = true }
+            emitLog(.command, "$ xattr -dr \(attr) \"\(pkgURL.path)\"")
+            let removed = runProcess("/usr/bin/xattr", ["-dr", attr, pkgURL.path])
+            emitOutput(removed.output)
+            guard checkCancelled() else { return }
+            if removed.exitCode != 0 {
+                finishWithError(code: AppError.quarantineRemoveFailed("").code,
+                                message: AppError.quarantineRemoveFailed("").localizedDescription,
+                                at: .cleaning)
+                return
+            }
+            emitLog(.success, L10n.s(successKey))
+            DebugLogger.info(feature: "GATEOPEN", "PKG \(attr) 제거 성공")
+        }
+        if !anyStamp {
+            emitLog(.output, L10n.s("pipe.noQuarantine"))
+        }
+
+        // 서명 검사 (pkgutil)
+        emit(.phase(.verifying))
+        emitLog(.command, "$ pkgutil --check-signature \"\(pkgURL.path)\"")
+        let pkgutil = runProcess("/usr/sbin/pkgutil", ["--check-signature", pkgURL.path])
+        emitOutput(pkgutil.output)
+        guard checkCancelled() else { return }
+
+        let pkgSig = AppInspector.parsePkgSignature(output: pkgutil.output, exitCode: pkgutil.exitCode)
+        switch pkgSig {
+        case .signed(let summary):
+            verdict.codesignValid = true
+            verdict.codesignNote = summary
+            emitLog(.success, L10n.f("pipe.pkgSigned", summary))
+            DebugLogger.info(feature: "GATEOPEN", "PKG 서명 확인: \(summary)")
+        case .unsigned:
+            verdict.codesignNote = L10n.s("pipe.pkgUnsigned")
+            emitLog(.failure, L10n.s("pipe.pkgUnsigned"))
+            DebugLogger.error(code: AppError.signatureInvalid([]).code, "PKG 미서명")
+        case .invalid(let summary):
+            verdict.codesignNote = summary
+            emitLog(.failure, L10n.f("pipe.pkgSignFail", summary))
+            DebugLogger.error(code: AppError.signatureInvalid([]).code, "PKG 서명 오류: \(summary)")
+        }
+
+        // Gatekeeper 설치 평가 (spctl -t install)
+        emitLog(.command, "$ spctl -a -vv -t install \"\(pkgURL.path)\"")
+        let spctl = runProcess("/usr/sbin/spctl", ["-a", "-vv", "-t", installAssessmentType, pkgURL.path])
+        emitOutput(spctl.output)
+        guard checkCancelled() else { return }
+
+        // PKG는 설치 패키지라 앱 서명 단계 없음 → 스킵 로그만 남긴다.
+        emit(.phase(.signing))
+        emitLog(.output, L10n.s("pipe.pkgNoSign"))
+
+        switch AppInspector.parseSpctl(output: spctl.output, exitCode: spctl.exitCode) {
+        case .accepted:
+            verdict.spctlNote = "Gatekeeper 설치 평가 통과"
+            emitLog(.success, L10n.s("pipe.spctlOK"))
+            emit(.verdict(verdict))
+            emit(.phase(.ready))
+            emitLog(.success, L10n.s("pipe.ready"))
+            DebugLogger.info(feature: "GATEOPEN", "PKG 검사 완료 (통과)")
+        case .rejected(let summary):
+            verdict.spctlNote = summary
+            emit(.verdict(verdict))
+            emit(.phase(.blocked))
+            if verdict.codesignValid {
+                emitLog(.failure, L10n.s("pipe.devSig"))
+            } else {
+                emitLog(.failure, summary)
+            }
+            emitLog(.output, L10n.s("pipe.devHint"))
+            DebugLogger.error(code: AppError.gatekeeperRejected("").code, "PKG 경고 게이트: \(summary)")
+        }
+    }
+
+    /// spctl 설치 평가용 타입 (`install`). 앱은 기본 `open`을 쓰므로 분리.
+    private var installAssessmentType: String { "install" }
+
     // MARK: - 서명 (사용자 확인 후, T-AGO-21)
 
     /// signPrompt 발행 후 UI 결정을 기다린다. 취소되면 nil.
@@ -473,6 +699,57 @@ final class GatePipeline: @unchecked Sendable {
     }
 
     // MARK: - 내부 유틸
+
+    /// `hdiutil attach -plist` 출력에서 첫 번째 마운트 포인트를 찾는다.
+    static func mountPoint(fromHdiutilPlist plistOutput: String) -> String? {
+        guard let data = plistOutput.data(using: .utf8),
+              let plist = try? PropertyListSerialization.propertyList(from: data, format: nil),
+              let root = plist as? [String: Any],
+              let entities = root["system-entities"] as? [[String: Any]] else { return nil }
+        // mount-point 키가 있는 엔트리 우선, 없으면 dev-entry + mount-point 병합.
+        for entity in entities {
+            if let mp = entity["mount-point"] as? String, !mp.isEmpty {
+                return mp
+            }
+        }
+        return nil
+    }
+
+    /// 볼륨에서 가장 얕은 `.app` 번들을 찾는다 (최대 `maxDepth`단계 재귀).
+    static func findAppBundle(in directory: URL, maxDepth: Int = 4) -> URL? {
+        findBundle(in: directory, pathExtension: "app", maxDepth: maxDepth)
+    }
+
+    /// 볼륨에서 가장 얕은 `.pkg` 파일을 찾는다 (`.app` 없을 때 폴백용).
+    static func findPkg(in directory: URL, maxDepth: Int = 4) -> URL? {
+        findBundle(in: directory, pathExtension: "pkg", maxDepth: maxDepth)
+    }
+
+    /// 지정한 확장자를 가진 가장 얕은 파일/번들을 재귀 탐색한다.
+    private static func findBundle(in directory: URL, pathExtension: String, maxDepth: Int) -> URL? {
+        guard maxDepth >= 0 else { return nil }
+        let fm = FileManager.default
+        guard let items = try? fm.contentsOfDirectory(
+            at: directory, includingPropertiesForKeys: [.isDirectoryKey], options: .skipsHiddenFiles
+        ) else { return nil }
+
+        // 같은 깊이에서는 알파벳 순으로 결정적 선택
+        let matches = items
+            .filter { $0.pathExtension.lowercased() == pathExtension }
+            .sorted { $0.lastPathComponent < $1.lastPathComponent }
+        if let first = matches.first { return first }
+
+        guard maxDepth > 0 else { return nil }
+        for folder in items {
+            let isDir = (try? folder.resourceValues(forKeys: [.isDirectoryKey]).isDirectory) ?? false
+            // .app 번들 내부는 더 파지 않는다 (PlugIns 등은 대상이 아님)
+            guard isDir, folder.pathExtension.lowercased() != "app" else { continue }
+            if let nested = findBundle(in: folder, pathExtension: pathExtension, maxDepth: maxDepth - 1) {
+                return nested
+            }
+        }
+        return nil
+    }
 
     @discardableResult
     private func runProcess(_ launchPath: String, _ args: [String]) -> (exitCode: Int32, output: String) {

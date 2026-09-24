@@ -11,7 +11,9 @@ enum AppError: LocalizedError {
     case gatekeeperRejected(String)
     case launchFailed(String)
     case notAnAppBundle(String)
+    case unsupportedFormat(String)
     case signingFailed(String)
+    case dmgMountFailed(String)
 
     var code: String {
         switch self {
@@ -20,8 +22,9 @@ enum AppError: LocalizedError {
         case .signatureInvalid: return "E-MAC-VAL-2001"
         case .gatekeeperRejected: return "E-MAC-PERM-2003"
         case .launchFailed: return "E-MAC-PERM-2004"
-        case .notAnAppBundle: return "E-MAC-VAL-2002"
+        case .notAnAppBundle, .unsupportedFormat: return "E-MAC-VAL-2002"
         case .signingFailed: return "E-MAC-PERM-2005"
+        case .dmgMountFailed: return "E-MAC-PERM-2006"
         }
     }
 
@@ -32,8 +35,9 @@ enum AppError: LocalizedError {
         case .signatureInvalid: return L10n.s("err.sign")
         case .gatekeeperRejected(let d): return L10n.f("err.gatekeeper", d)
         case .launchFailed(let d): return L10n.f("err.launch", d)
-        case .notAnAppBundle(let d): return L10n.f("err.notapp", d)
+        case .notAnAppBundle(let d), .unsupportedFormat(let d): return L10n.f("err.notapp", d)
         case .signingFailed(let d): return L10n.f("err.signing", d)
+        case .dmgMountFailed(let d): return L10n.f("err.dmg", d)
         }
     }
 }
