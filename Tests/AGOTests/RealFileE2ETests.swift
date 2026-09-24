@@ -14,9 +14,9 @@ struct RealFileE2ETests {
     private static let largeDmg = downloads.appendingPathComponent("Raiders.of.Blackveil.v2026.09.17.MacOS-U2B.dmg")
     private static let samplePkg = downloads.appendingPathComponent("dlc_train_valley_2___editor_s_bulletin_enUS_1_9_4_.pkg")
 
-    @Test("작은 DMG (GOG 설치) — 마운트·PKG 검출·PKG 파이프라인 연결")
+    @Test("작은 DMG (GOG 설치) — 마운트·PKG 검출·PKG 파이프라인 연결",
+          .enabled(if: FileManager.default.fileExists(atPath: RealFileE2ETests.smallDmg.path)))
     func e2eSmallDmgPkgFallback() async throws {
-        try Self.require(Self.smallDmg)
         let result = await Self.runToTerminal(url: Self.smallDmg, timeout: .seconds(180))
         // train_valley DMG는 루트에 .pkg만 있음 (.app 없음) → PKG 폴백 경로
         #expect(result.target?.pathExtension == "pkg")
@@ -30,9 +30,9 @@ struct RealFileE2ETests {
         }
     }
 
-    @Test("큰 DMG (RoB) — 마운트·앱 추출·앱 파이프라인 연결")
+    @Test("큰 DMG (RoB) — 마운트·앱 추출·앱 파이프라인 연결",
+          .enabled(if: FileManager.default.fileExists(atPath: RealFileE2ETests.largeDmg.path)))
     func e2eLargeDmgApp() async throws {
-        try Self.require(Self.largeDmg)
         let result = await Self.runToTerminal(url: Self.largeDmg, timeout: .seconds(600))
         // RoB DMG는 루트에 RoB.app 있음 → 앱 파이프라인 경로
         #expect(result.target?.pathExtension == "app")
@@ -45,21 +45,15 @@ struct RealFileE2ETests {
         }
     }
 
-    @Test("샘플 PKG — 서명 검사 후 ready/blocked")
+    @Test("샘플 PKG — 서명 검사 후 ready/blocked",
+          .enabled(if: FileManager.default.fileExists(atPath: RealFileE2ETests.samplePkg.path)))
     func e2eSamplePkg() async throws {
-        try Self.require(Self.samplePkg)
         let result = await Self.runToTerminal(url: Self.samplePkg, timeout: .seconds(60))
         #expect(result.phase == PipelinePhase.ready || result.phase == PipelinePhase.blocked)
         #expect(result.pkgSignedLog || result.pkgUnsignedLog || result.spctlLog)
     }
 
     // MARK: - 헬퍼
-
-    private static func require(_ url: URL) throws {
-        guard FileManager.default.fileExists(atPath: url.path) else {
-            throw E2ESkip("파일 없음: \(url.lastPathComponent)")
-        }
-    }
 
     private static func runToTerminal(url: URL, timeout: Duration) async -> E2EResult {
         let state = await MainActor.run { E2EState() }
@@ -82,12 +76,6 @@ struct RealFileE2ETests {
         }
         pipeline.cancel()
         return await MainActor.run { state.snapshot() }
-    }
-
-    private struct E2ESkip: Error, CustomStringConvertible {
-        let message: String
-        init(_ message: String) { self.message = message }
-        var description: String { "SKIP: \(message)" }
     }
 
     private struct E2EResult {
