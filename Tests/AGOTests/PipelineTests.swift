@@ -150,12 +150,28 @@ struct InspectorTests {
         #expect(AppInspector.signTargets(appURL: plain) == [plain.standardizedFileURL])
     }
 
-    @Test("spctl 게이트: 서명된 변조 앱은 허용, 미서명 변조는 차단")
+    @Test("spctl 게이트: 서명된 변조 앱은 허용, 미서명 변조는 하드차단 아님(로그 키 선택용)")
     func spctlAllowGate() {
         #expect(AppInspector.spctlAllowGate(codesignValid: true, signed: false, tamperEvidence: false))
         #expect(AppInspector.spctlAllowGate(codesignValid: true, signed: true, tamperEvidence: true))
+        // 미서명 변조: 하드 차단이 아니라 warnTampered 로그 + blocked 게이트로 간다 (GatePipeline).
         #expect(!AppInspector.spctlAllowGate(codesignValid: false, signed: true, tamperEvidence: true))
         #expect(!AppInspector.spctlAllowGate(codesignValid: true, signed: false, tamperEvidence: true))
+        #expect(!AppInspector.spctlAllowGate(codesignValid: false, signed: false, tamperEvidence: true))
+    }
+
+    @Test("재귀 xattr 감지 — 루트에 없고 중첩에만 있는 quarantine (RoB.app 사례)")
+    func detectsNestedQuarantine() {
+        let recursive = """
+        /Apps/RoB.app: com.apple.provenance: abcd
+        /Apps/RoB.app/Contents/PlugIns/steam_api.bundle/Contents/MacOS/libsteam_api.dylib: com.apple.quarantine: 0083;abc;Safari;x
+        """
+        #expect(AppInspector.hasQuarantine(xattrOutput: recursive))
+        #expect(AppInspector.hasProvenance(xattrOutput: recursive))
+        // 비재귀 루트만 보면 quarantine 누락
+        let rootOnly = "/Apps/RoB.app: com.apple.provenance: abcd\n"
+        #expect(!AppInspector.hasQuarantine(xattrOutput: rootOnly))
+        #expect(AppInspector.hasProvenance(xattrOutput: rootOnly))
     }
 }
 

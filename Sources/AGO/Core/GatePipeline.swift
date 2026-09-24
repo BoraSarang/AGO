@@ -136,24 +136,38 @@ final class GatePipeline: @unchecked Sendable {
             return
         }
 
-        // 단계 2: 조회 (ls + xattr)
+        // 단계 2: 조회 (ls + xattr 재귀)
+        // -l(비재귀)은 루트 노드만 보므로 중첩 파일의 quarantine을 놓친다
+        // (RoB.app: 루트에는 provenance만, PlugIns/.../libsteam_api.dylib에만 quarantine).
+        // 제거는 xattr -dr라 재귀 감지가 곧 재귀 제거로 이어진다.
         let ls = runProcess("/bin/ls", ["-ld", url.path])
         emitOutput(ls.output)
         guard checkCancelled() else { return }
 
-        let xattrList = runProcess("/usr/bin/xattr", ["-l", url.path])
-        emitOutput(xattrList.output)
+        var xattrOutput = ""
+        var xattrExit: Int32 = 1
+        let recursive = runProcess("/usr/bin/xattr", ["-lr", url.path])
+        if recursive.exitCode == 0 {
+            xattrOutput = recursive.output
+            xattrExit = 0
+        } else {
+            // 일부 파일 권한 문제로 재귀 조회가 실패하면 루트만이라도 본다.
+            let single = runProcess("/usr/bin/xattr", ["-l", url.path])
+            xattrOutput = single.output
+            xattrExit = single.exitCode
+        }
         guard checkCancelled() else { return }
 
-        if xattrList.exitCode != 0 {
+        if xattrExit != 0 {
             finishWithError(code: AppError.quarantineInspectFailed("").code,
                             message: AppError.quarantineInspectFailed("").localizedDescription,
                             at: .inspecting)
             return
         }
-        let quarantined = AppInspector.hasQuarantine(xattrOutput: xattrList.output)
-        let provenanced = AppInspector.hasProvenance(xattrOutput: xattrList.output)
-        let macled = AppInspector.hasMacl(xattrOutput: xattrList.output)
+        let quarantined = AppInspector.hasQuarantine(xattrOutput: xattrOutput)
+        let provenanced = AppInspector.hasProvenance(xattrOutput: xattrOutput)
+        let macled = AppInspector.hasMacl(xattrOutput: xattrOutput)
+        emitStampSummary(xattrOutput)
         if provenanced {
             emitLog(.output, L10n.s("pipe.provenanceFound"))
             DebugLogger.info(feature: "GATEOPEN", "macOS 26+ 출처 속성 감지 (com.apple.provenance)")
@@ -234,14 +248,20 @@ final class GatePipeline: @unchecked Sendable {
             return
         }
         if decision.proceed {
-            guard runSign(url: url, identity: decision.identity ?? identities.first ?? "") else { return }
-            verdict.signed = true
-            // 서명 후 재검증: 서명 유효성만 갱신, 변조 증거(modifiedFiles)는 유지.
-            let reverify = runProcess("/usr/bin/codesign",
-                                      ["--verify", "--deep", "--strict", "--verbose=4", url.path])
-            guard checkCancelled() else { return }
-            if case .valid = AppInspector.parseCodesign(output: reverify.output, exitCode: reverify.exitCode) {
-                verdict.codesignValid = true
+            // 서명 실패해도 파이프라인을 끊지 않는다. RoB.app류(중첩 구조 손상)는
+            // 재서명이 구조적으로 불가능해도 속성 제거만으로 실행된다.
+            if runSign(url: url, identity: decision.identity ?? identities.first ?? "") {
+                verdict.signed = true
+                // 서명 후 재검증: 서명 유효성만 갱신, 변조 증거(modifiedFiles)는 유지.
+                let reverify = runProcess("/usr/bin/codesign",
+                                          ["--verify", "--deep", "--strict", "--verbose=4", url.path])
+                guard checkCancelled() else { return }
+                if case .valid = AppInspector.parseCodesign(output: reverify.output, exitCode: reverify.exitCode) {
+                    verdict.codesignValid = true
+                }
+            } else {
+                emitLog(.output, L10n.s("pipe.signSkipped"))
+                DebugLogger.info(feature: "GATEOPEN", "서명 실패 — 검증·평가 계속")
             }
         } else {
             emitLog(.output, L10n.s("pipe.signSkipped"))
@@ -260,25 +280,25 @@ final class GatePipeline: @unchecked Sendable {
             emitLog(.success, L10n.s("pipe.spctlOK"))
             DebugLogger.info(feature: "GATEOPEN", "spctl 통과")
         case .rejected(let summary):
-            // 서명은 정상인데 Gatekeeper만 거부(개발용 서명 등) → 경고 후 허용 경로.
-            // 변조 증거가 있어도 우리가 서명해 현재 유효하면 허용 (증거는 카드에 유지).
+            // spctl 거부는 더 이상 완전 차단이 아니다.
+            // 속성 제거 후에는 Gatekeeper가 실행 시 재평가하지 않고(로컬 실측),
+            // macOS 26은 Terminal 위임으로 실행한다. 개발용 서명·중첩 손상(RoB.app) 모두
+            // 경고 카드 + 체크박스 게이트(blocked)로 진행한다.
+            verdict.spctlNote = summary
             let tamper = !verdict.modifiedFiles.isEmpty || !verdict.codesignNote.isEmpty
+            emit(.verdict(verdict))
+            emit(.phase(.blocked))
             if AppInspector.spctlAllowGate(codesignValid: verdict.codesignValid,
                                            signed: verdict.signed,
                                            tamperEvidence: tamper) {
-                verdict.spctlNote = summary
-                emit(.verdict(verdict))
-                emit(.phase(.blocked))
                 emitLog(.failure, L10n.s("pipe.devSig"))
-                emitLog(.output, L10n.s("pipe.devHint"))
-                DebugLogger.error(code: AppError.gatekeeperRejected("").code, "개발용 서명: \(summary)")
-                return
+            } else if tamper {
+                emitLog(.failure, L10n.s("pipe.warnTampered"))
+            } else {
+                emitLog(.failure, summary)
             }
-            // 거부돼도 변조 증거는 카드에 남긴다 (VerdictCardView가 idle에서도 표시).
-            emit(.verdict(verdict))
-            finishWithError(code: AppError.gatekeeperRejected("").code,
-                            message: AppError.gatekeeperRejected(summary).localizedDescription,
-                            at: .verifying)
+            emitLog(.output, L10n.s("pipe.devHint"))
+            DebugLogger.error(code: AppError.gatekeeperRejected("").code, "경고 게이트로 진행: \(summary)")
             return
         }
 
@@ -315,29 +335,62 @@ final class GatePipeline: @unchecked Sendable {
     }
 
     /// appex 먼저 → 본체 마지막 순서로 개발자 신원 서명한다. adhoc(`-`) 서명 금지.
+    /// 중첩 하나라도 실패하면 본체를 서명하지 않는다 (부분 서명은 부모 봉인을 더 깨뜨린다).
+    /// 실패 시 finishWithError 대신 false만 반환 — 호출부가 검증·평가를 계속한다.
     @discardableResult
     private func runSign(url: URL, identity: String) -> Bool {
         guard !identity.isEmpty, identity != "-" else {
-            finishWithError(code: AppError.signingFailed("").code,
-                            message: AppError.signingFailed(identity).localizedDescription,
-                            at: .signing)
+            emitLog(.failure, AppError.signingFailed(identity).localizedDescription)
+            DebugLogger.error(code: AppError.signingFailed("").code, "서명 신원 없음")
             return false
         }
-        for target in AppInspector.signTargets(appURL: url) {
+        let targets = AppInspector.signTargets(appURL: url)
+        let nested = targets.dropLast()
+        let appBody = targets.last
+        for target in nested {
             emitLog(.command, "$ codesign --force -s \"\(identity)\" \"\(target.path)\"")
             let signed = runProcess("/usr/bin/codesign", ["--force", "-s", identity, target.path])
             emitOutput(signed.output)
             guard checkCancelled() else { return false }
             if signed.exitCode != 0 {
-                finishWithError(code: AppError.signingFailed("").code,
-                                message: AppError.signingFailed(target.lastPathComponent).localizedDescription,
-                                at: .signing)
+                let message = AppError.signingFailed(target.lastPathComponent).localizedDescription
+                emitLog(.failure, message)
+                DebugLogger.error(code: AppError.signingFailed("").code,
+                                  "중첩 서명 실패 — 부분 서명 방지를 위해 중단: \(target.lastPathComponent)")
+                return false
+            }
+        }
+        if let appBody {
+            emitLog(.command, "$ codesign --force -s \"\(identity)\" \"\(appBody.path)\"")
+            let signed = runProcess("/usr/bin/codesign", ["--force", "-s", identity, appBody.path])
+            emitOutput(signed.output)
+            guard checkCancelled() else { return false }
+            if signed.exitCode != 0 {
+                let message = AppError.signingFailed(appBody.lastPathComponent).localizedDescription
+                emitLog(.failure, message)
+                DebugLogger.error(code: AppError.signingFailed("").code,
+                                  "본체 서명 실패: \(appBody.lastPathComponent)")
                 return false
             }
         }
         emitLog(.success, L10n.f("pipe.signed", identity))
         DebugLogger.info(feature: "GATEOPEN", "서명 완료: \(identity)")
         return true
+    }
+
+    /// 재귀 xattr 출력에서 차단 3종 건수만 요약해 로그에 남긴다 (수천 줄 덤프 금지).
+    private func emitStampSummary(_ output: String) {
+        var counts = (q: 0, p: 0, m: 0)
+        for line in output.split(separator: "\n", omittingEmptySubsequences: true) {
+            if line.contains("com.apple.quarantine") { counts.q += 1 }
+            if line.contains("com.apple.provenance") { counts.p += 1 }
+            if line.contains("com.apple.macl") { counts.m += 1 }
+        }
+        let total = counts.q + counts.p + counts.m
+        if total > 0 {
+            emitLog(.output, L10n.f("pipe.stampsFound", total))
+            DebugLogger.info(feature: "GATEOPEN", "차단 속성 항목: quarantine \(counts.q), provenance \(counts.p), macl \(counts.m)")
+        }
     }
 
     // MARK: - 실행 (사용자 확인 후)
@@ -436,9 +489,12 @@ final class GatePipeline: @unchecked Sendable {
             stateLock.withLock { currentProcess = nil }
             return (1, L10n.f("pipe.procFail", error.localizedDescription))
         }
+        // waitUntilExit() 후 readDataToEndOfFile()는 출력이 pipe 버퍼(64KB)를 넘으면
+        // 데드락한다. xattr -lr(수천 줄)·codesign --verbose=4에서 실제 멈춤 원인.
+        // 읽기를 먼저 끝내고(EOF=자식 종료) 그 다음 wait.
+        let data = pipe.fileHandleForReading.readDataToEndOfFile()
         process.waitUntilExit()
         stateLock.withLock { currentProcess = nil }
-        let data = pipe.fileHandleForReading.readDataToEndOfFile()
         let output = String(data: data, encoding: .utf8) ?? ""
         return (process.terminationStatus, output.trimmingCharacters(in: .whitespacesAndNewlines))
     }

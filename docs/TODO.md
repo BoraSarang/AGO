@@ -2,8 +2,8 @@
 
 > **프로젝트**: AGO (Automatic Gate Opener)
 > **플랫폼**: macOS
-> **버전**: v0.2.2 릴리스 완료 (업데이트 확인 + DMG 파이프라인)
-> **최종 갱신**: 2026-09-22
+> **버전**: v0.2.3 (spctl 거부 → blocked 경고 게이트 + 재귀 xattr)
+> **최종 갱신**: 2026-09-24
 > **기준 문서**: `docs/plans/PLAN_v1.0_macos.md` + `docs/plans/PLAN_v1.1_macos.md` + `docs/CHANGELOG.md`
 
 ---

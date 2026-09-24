@@ -2,6 +2,16 @@
 
 > 모든 기록은 한국어. platform 태그 + error_code + perf 영향 포함.
 
+## [v0.2.3] - 2026-09-24 (macos) — spctl 거부 시 하드 차단 해제 + 재귀 xattr 검사 (RoB.app 실전)
+- 원인 규명 (Raiders of Blackveil / RoB.app): 중첩 `steam_api.bundle` 서명 불일치로 `codesign --verify` 실패 → 기본 서명 건너뛰기 → `spctl` 거부 → `spctlAllowGate`가 `codesignValid`를 요구해 **E-MAC-PERM-2003 하드 차단**(실행 버튼 없음). 실제 속성 제거만으로는 실행 가능했던 과잉 차단
+- 원인 2: 파이프라인이 `xattr -l`(비재귀)이라 루트에 provenance만 있고 중첩 파일(예: `PlugIns/.../libsteam_api.dylib`)에만 quarantine이 있으면 감지·제거에서 누락될 수 있음
+- 대응 1: `runInspect` 단계 2를 `xattr -lr` 재귀 조회로 변경 (실패 시 루트 `-l` 폴백). 전체 덤프 대신 차단 3종 건수 요약 로그 `pipe.stampsFound` (한/영 키 parity)
+- 대응 2: `spctl` 거부 시 무조건 `blocked`(경고 카드 + 체크박스)로 진행. 개발용 서명·중첩 손상 모두 동일 게이트. `finishWithError(E-MAC-PERM-2003)` 경로 제거 — 속성 제거 후에는 Gatekeeper 미재평가 + Terminal 위임 실행으로 로컬 실측과 동일 경로
+- 대응 3: 서명 실패 시 `finishWithError` 대신 소프트 계속. 중첩 서명 실패 시 본체를 서명하지 않음 (부분 서명으로 부모 봉인 악화 방지 — RoB `steam_api.bundle` 재서명 불가 케이스)
+- 테스트: 기존 spctlAllowGate·파싱 스위트 유지. E2E: DMG 원본 RoB.app 파이프라인 시퀀스로 blocked→실행 검증 예정
+- fix: `runProcess` 파이프 데드락 — `waitUntilExit()` 후 `readDataToEndOfFile()`는 `xattr -lr` 대량 출력(≈78KB > 64KB 버퍼)에서 확인 단계 무한 정지. 을 먼저(EOF) 읽고 wait로 교체. `findIdentityOutput` 동일 패턴 수정
+- perf: 재귀 xattr은 Unity 번들 수백 파일 수준 — 요약 로그로 UI flood 방지, 예산 영향 無
+
 ## [v0.2.2] - 2026-09-22 (macos) — 실행 런처 맥락 수정 + 업데이트 확인 + DMG 배포
 - 업데이트 확인 (T-AGO-29, macos-app-update 가이드 적용): `ReleaseChecker`가 GitHub `releases/latest` 조회(404는 "릴리스 없음"으로 분리, User-Agent는 번들 버전). `UpdateModel` — 주기(실행 시/매일/매주/안 함, 기본 주 1회) + `updateCheckedAt` UserDefaults 영속화. UI: 하단 버전 자리에 주황 "vX 사용 가능" 배지 → `UpdateAvailableSheet`(릴리스 노트 줄 단위 블록 렌더링 — 가이드 실패 2·3번 회피, 한글 볼드 CLI 사전 검증) + 도움말 시트에 확인 버튼·주기 피커. 인앱 자동 교체는 하지 않고 릴리스 페이지로 연결
 - 릴리스 파이프라인 (T-AGO-30): `.github/workflows/release.yml` — `v*.*.*` 태그 푸시 → xcodegen → 태그 vs Info.plist 버전 일치 검증 → 테스트 → Release 빌드 → ad-hoc 서명 → DMG(`hdiutil`, /Applications 심링크 포함) → `gh release create`(`release-notes/<tag>.md` 본문). `build_and_run.sh package`도 ZIP에서 DMG로 변경 + Release 빌드

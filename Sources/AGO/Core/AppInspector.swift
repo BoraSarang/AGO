@@ -123,8 +123,9 @@ enum AppInspector {
         } catch {
             return ""
         }
-        process.waitUntilExit()
+        // 출력을 먼저 소진 후 wait (pipe 데드락 방지 — GatePipeline.runProcess와 동일).
         let data = pipe.fileHandleForReading.readDataToEndOfFile()
+        process.waitUntilExit()
         return String(data: data, encoding: .utf8) ?? ""
     }
 

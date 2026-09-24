@@ -146,7 +146,7 @@
         <tr><td><span class="tag warn">warning</span><br>tampering suspected</td><td>Files don't match the signature (e.g. injected dylib).</td><td>Read the red card. Reinstall from the official source — or tick the checkbox and run at your own risk.</td></tr>
         <tr><td><span class="tag warn">warning</span><br>development signature</td><td>Dev-certificate build, not for distribution. Not malware.</td><td>Check the card, tick the checkbox, run.</td></tr>
         <tr><td><span class="tag warn">warning</span><br>signing identity found</td><td>App signed with your own developer identity.</td><td>Gatekeeper is still assessed separately. Check the card, tick the checkbox, run.</td></tr>
-        <tr><td><span class="tag stop">blocked</span><br>Gatekeeper refused</td><td>Failed assessment <em>with</em> tampering evidence.</td><td>Cannot run. Download again from the official source.</td></tr>
+        <tr><td><span class="tag stop">blocked</span><br>Gatekeeper refused</td><td>Failed assessment <em>with</em> tampering evidence.</td><td>Warning card + checkbox after stamp cleanup — acknowledge, then run.</td></tr>
         <tr><td><span class="tag stop">failed</span><br>couldn't remove quarantine</td><td>Permission problem, usually inside <code>/Applications</code>.</td><td>Move the app (e.g. to <code>~/Downloads</code>) and retry.</td></tr>
       </tbody>
     </table>

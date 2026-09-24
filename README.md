@@ -36,7 +36,7 @@ Privacy &amp; Security and click "Open Anyway". AGO does that for you in a singl
 | `tampering suspected: N files added/modified` | Files don't match the signature (e.g. dylib injection) | Read the red warning card → reinstall from the official source is recommended. To run anyway, tick the checkbox, then press Run |
 | `development signature` | Signed with a development certificate, not for distribution. Not malware | Check the warning card → tick the checkbox, then press Run |
 | `signing identity found` → `signed` | App signed with your own developer identity | Gatekeeper is still assessed separately. Check the warning card → tick the checkbox, then press Run |
-| `Gatekeeper refused` | Assessment failed with tampering evidence | Cannot run. Download again from the official source |
+| `Gatekeeper refused` | Assessment failed with tampering evidence | Warning card + checkbox after stamps are cleared — tick and run (Terminal delegate) |
 | `failed to remove quarantine` | Permission problem (usually inside `/Applications`) | Move the app elsewhere (e.g. `~/Downloads`) and retry |
 
 ## Security Policy
