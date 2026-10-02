@@ -9,3 +9,5 @@ DerivedData/
 .env
 .env.expiry
 api_keys.json
+# 에이전트 세션 로그 — 로컬 전용 (커밋 금지)
+.agent/
