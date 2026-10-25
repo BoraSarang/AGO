@@ -2,6 +2,15 @@
 
 > 모든 기록은 한국어. platform 태그 + error_code + perf 영향 포함.
 
+## [v0.3.2] - 2026-10-25 (macos) — 문서·랜딩 메타데이터 정비 (기능 변경 없음)
+- **README 배지**: `README.md`·`README.ko.md` 상단에 macOS 14+ · Swift 6 · SwiftUI · MIT 4종 배지 (shields.io 4/4 HTTP 200 확인)
+- **GitHub topics**: 15개 등록 — `macos` `macos-app` `swift` `swiftui` `gatekeeper` `codesign` `quarantine` `security-tools` `desktop-utility` `dmg` `universal-binary` `apple-silicon` `intel` `xcodegen` `korean`. 배포 DMG 바이너리를 `lipo -archs`로 확인해 `x86_64 arm64`(universal) 근거 확보 → `universal-binary`·`intel` 포함, 공증(notarization) 미적용이므로 해당 topic 제외
+- **랜딩 메타데이터(EN/KO)**: `meta description`에 quarantine·codesign·Gatekeeper 반영, `meta keywords`·canonical·OG·Twitter Card 추가, 푸터에 Topics 한 줄
+- **구조화 데이터(JSON-LD)**: `SoftwareApplication` — 버전 0.3.2·`operatingSystem`(macOS 14+, Apple Silicon/Intel)·license·무료 여부·저장소/다운로드 링크. 두 문서 JSON 파싱 검증
+- 버전 표기: `project.yml` 0.3.1 → **0.3.2**, 랜딩 eyebrow·figcaption 동기화
+- **기능 변경 없음** — 소스·L10n·UI 무변경, v0.3.1 동작과 동일 (문서 릴리스)
+- perf 영향: 없음
+
 ## [v0.3.1] - 2026-09-24 (macos) — 도움말 대폭 보강 + 첫 실행 1회 표시 + 업데이트 행 하단 고정
 - **도움말 시트 7섹션**: 기존 4(왜 필요한가요/사용 절차/경고의 의미/하지 않는 일) + 신규 3 — `help.s5t/s5b` 파일 형식별 처리(.app/.dmg/.pkg), `help.s6t/s6b` 준비됨과 경고(ready vs blocked·자동 실행 없음), `help.s7t/s7b` 자주 나오는 문제(권한·Gatekeeper·첫 실행 차단). 표시 순서: s1→s2→s5→s6→s3→s4→s7
 - **업데이트 행 하단 고정**: `updateRow`(확인 버튼·주기 피커)를 ScrollView 밖 Divider 사이로 이동 — 스크롤 없이 항상 노출. 기존 문제: 본문이 길어지면 업데이트 컨트롤이 아래로 밀림
