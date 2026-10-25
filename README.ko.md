@@ -4,6 +4,11 @@
 >
 > [English](README.md) · [릴리스](https://github.com/BoraSarang/AGO/releases) · [소개 페이지](https://borasarang.github.io/AGO/)
 
+[![macOS 14+](https://img.shields.io/badge/macOS-14%2B-black?logo=apple&logoColor=white)](https://github.com/BoraSarang/AGO)
+[![Swift 6](https://img.shields.io/badge/Swift-6.0-F05138?logo=swift&logoColor=white)](https://github.com/BoraSarang/AGO)
+[![SwiftUI](https://img.shields.io/badge/SwiftUI-blue?logo=swift&logoColor=white)](https://github.com/BoraSarang/AGO)
+[![License: MIT](https://img.shields.io/badge/License-MIT-green.svg)](LICENSE)
+
 ![열어줘 실행 화면](site/images/ago-hero.png)
 
 ---
